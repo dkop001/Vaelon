@@ -1,0 +1,222 @@
+// ── EventStream: Push + AsyncIterable hybrid ────────────────────────────────
+// Inspired by OpenClaw's EventStream pattern.
+// Every agent action emits typed events. UI, logger, analytics, extensions
+// all subscribe independently. No more callback soup.
+
+/**
+ * @template TEvent - The type of events emitted
+ * @template TResult - The type of the final result
+ */
+export class EventStream {
+  constructor() {
+    this._listeners = new Map();
+    this._queue = [];
+    this._result = undefined;
+    this._done = false;
+    this._error = null;
+    this._waiters = [];
+    this._resultWaiters = [];
+    this._destroyed = false;
+  }
+
+  // ── Push interface ──────────────────────────────────────────────────────
+
+  push(event) {
+    if (this._done || this._destroyed) return false;
+
+    this._queue.push(event);
+    this._notifyListeners(event);
+
+    // Notify async iterators waiting for data
+    while (this._waiters.length > 0 && this._queue.length > 0) {
+      const waiter = this._waiters.shift();
+      const item = this._queue.shift();
+      waiter.resolve({ done: false, value: item });
+    }
+
+    return true;
+  }
+
+  end(result) {
+    this._result = result;
+    this._done = true;
+
+    // Signal end to all async iterators
+    for (const waiter of this._waiters) {
+      waiter.resolve({ done: true, value: undefined });
+    }
+    this._waiters = [];
+
+    // Resolve all result() promises
+    for (const w of this._resultWaiters) {
+      w.resolve(result);
+    }
+    this._resultWaiters = [];
+
+    this._notifyListeners({ _type: '_stream_end', result });
+  }
+
+  error(err) {
+    this._error = err;
+    this._done = true;
+
+    // Reject all async iterators
+    for (const waiter of this._waiters) {
+      waiter.reject(err);
+    }
+    this._waiters = [];
+
+    // Reject all result() promises
+    for (const w of this._resultWaiters) {
+      w.reject(err);
+    }
+    this._resultWaiters = [];
+  }
+
+  destroy() {
+    this._destroyed = true;
+    this._listeners.clear();
+    this._queue = [];
+    for (const waiter of this._waiters) {
+      waiter.resolve({ done: true, value: undefined });
+    }
+    this._waiters = [];
+    for (const w of this._resultWaiters) {
+      w.resolve(undefined);
+    }
+    this._resultWaiters = [];
+  }
+
+  // ── Subscribe interface (for UI, logger, etc.) ──────────────────────────
+
+  on(type, handler) {
+    if (!this._listeners.has(type)) {
+      this._listeners.set(type, []);
+    }
+    this._listeners.get(type).push(handler);
+
+    // Return unsubscribe function
+    return () => {
+      const handlers = this._listeners.get(type);
+      if (handlers) {
+        const idx = handlers.indexOf(handler);
+        if (idx !== -1) handlers.splice(idx, 1);
+      }
+    };
+  }
+
+  onAny(handler) {
+    return this.on('*', handler);
+  }
+
+  _notifyListeners(event) {
+    const type = event.type || event._type;
+    const handlers = this._listeners.get(type) || [];
+    for (const h of handlers) {
+      try { h(event); } catch (e) { console.error('[EventStream] Listener error:', e); }
+    }
+
+    // Wildcard listeners get everything
+    const wildcards = this._listeners.get('*') || [];
+    for (const h of wildcards) {
+      try { h(event); } catch (e) { console.error('[EventStream] Wildcard listener error:', e); }
+    }
+  }
+
+  // ── AsyncIterable interface (for for-await-of) ──────────────────────────
+
+  [Symbol.asyncIterator]() {
+    const stream = this;
+
+    return {
+      next() {
+        // If we have buffered events, yield them
+        if (stream._queue.length > 0) {
+          const event = stream._queue.shift();
+          return Promise.resolve({ done: false, value: event });
+        }
+
+        // If stream is done
+        if (stream._done) {
+          if (stream._error) return Promise.reject(stream._error);
+          return Promise.resolve({ done: true, value: undefined });
+        }
+
+        // Wait for next event
+        return new Promise((resolve, reject) => {
+          stream._waiters.push({ resolve, reject });
+        });
+      },
+
+      return() {
+        return Promise.resolve({ done: true, value: undefined });
+      }
+    };
+  }
+
+  // ── Result promise ──────────────────────────────────────────────────────
+
+  result() {
+    if (this._done) {
+      if (this._error) return Promise.reject(this._error);
+      return Promise.resolve(this._result);
+    }
+
+    // No monkey-patching — store multiple waiters
+    return new Promise((resolve, reject) => {
+      this._resultWaiters.push({ resolve, reject });
+    });
+  }
+}
+
+// ── Typed Event Definitions ────────────────────────────────────────────────
+// These are the events every agent emits. Subscribe to any of them.
+
+/**
+ * @typedef {Object} AgentEvents
+ * @property {'agent_start'} - Agent run started
+ * @property {'agent_end'} - Agent run finished
+ * @property {'turn_start'} - LLM turn started
+ * @property {'turn_end'} - LLM turn finished
+ * @property {'thinking'} - Agent is thinking (text delta)
+ * @property {'plan_generated'} - Plan was generated by LLM
+ * @property {'step_start'} - Step execution started
+ * @property {'step_end'} - Step execution finished
+ * @property {'tool_start'} - Tool started executing
+ * @property {'tool_end'} - Tool finished executing
+ * @property {'tool_blocked'} - Tool was blocked by beforeToolCall hook
+ * @property {'checkpoint'} - Waiting for user approval
+ * @property {'checkpoint_resume'} - User approved/resumed
+ * @property {'checkpoint_abort'} - User aborted
+ * @property {'output'} - Terminal/command output captured
+ * @property {'file_changed'} - File was created/modified/deleted
+ * @property {'rag_indexed'} - Note was indexed for RAG
+ * @property {'build_log'} - Build log generated
+ * @property {'error'} - Error occurred
+ * @property {'progress'} - Progress update
+ */
+
+export const AgentEventTypes = {
+  AGENT_START: 'agent_start',
+  AGENT_END: 'agent_end',
+  TURN_START: 'turn_start',
+  TURN_END: 'turn_end',
+  THINKING: 'thinking',
+  PLAN_GENERATED: 'plan_generated',
+  STEP_START: 'step_start',
+  STEP_END: 'step_end',
+  TOOL_START: 'tool_start',
+  TOOL_END: 'tool_end',
+  TOOL_BLOCKED: 'tool_blocked',
+  CHECKPOINT: 'checkpoint',
+  CHECKPOINT_RESUME: 'checkpoint_resume',
+  CHECKPOINT_ABORT: 'checkpoint_abort',
+  OUTPUT: 'output',
+  FILE_CHANGED: 'file_changed',
+  RAG_INDEXED: 'rag_indexed',
+  BUILD_LOG: 'build_log',
+  ERROR: 'error',
+  PROGRESS: 'progress',
+};
+
+export default EventStream;
