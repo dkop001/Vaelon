@@ -197,6 +197,7 @@ export class EventStream {
  */
 
 export const AgentEventTypes = {
+  // Legacy
   AGENT_START: 'agent_start',
   AGENT_END: 'agent_end',
   TURN_START: 'turn_start',
@@ -217,6 +218,23 @@ export const AgentEventTypes = {
   BUILD_LOG: 'build_log',
   ERROR: 'error',
   PROGRESS: 'progress',
+
+  // New continuous loop events
+  REASONING_STARTED: 'reasoning_started',
+  REASONING_COMPLETED: 'reasoning_completed',
+  ACTION_CREATED: 'action_created',
+  ACTION_STARTED: 'action_started',
+  TOOL_STARTED: 'tool_started',
+  TOOL_FINISHED: 'tool_finished',
+  TOOL_ERROR: 'tool_error',
+  FILE_CREATED: 'file_created',
+  FILE_UPDATED: 'file_updated',
+  COMMAND_STARTED: 'command_started',
+  COMMAND_COMPLETED: 'command_completed',
+  OBSERVATION_RECORDED: 'observation_recorded',
+  TASK_COMPLETED: 'task_completed',
+  RETRY_STARTED: 'retry_started',
+  GOAL_COMPLETED: 'goal_completed',
 };
 
 export default EventStream;

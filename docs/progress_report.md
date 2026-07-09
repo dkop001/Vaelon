@@ -165,15 +165,69 @@ node node_modules/vite/bin/vite.js build
 | `src/App.jsx` | Wired `SearchPage` into `activeView === 'search'` |
 | `src/index.css` | Added CSS for sidebar search bar, tag pills, tag input, export menu, search page, search highlights |
 
-### Week 3 — Agent Mode
+### Week 3 — Continuous Reasoning Agent ✅
 
-| Task | Description |
-|------|-------------|
-| Agent layout | Panel-based workspace layout |
-| Terminal | Real shell terminal inside the app |
-| Command execution | Agent runs shell commands via tool pipeline |
-| Workspace context | Agent knows current project, notes, files |
-| Session persistence | Agent sessions persist across restarts |
+| Task | Status | What Was Built |
+|------|--------|----------------|
+| AgentState | ✅ | Central memory class: goal, tasks, files, observations, retry, status, context builder |
+| Action Types | ✅ | 10 typed actions: WRITE_FILE, READ_FILE, EDIT_FILE, DELETE_FILE, LIST_DIRECTORY, RUN_COMMAND, SEARCH_CODE, FETCH_URL, THINK, DONE |
+| Task Queue | ✅ | Dynamic queue: add, prepend, insert after, remove, reorder, clear |
+| Workspace Scanner | ✅ | Scans folder structure, package.json, framework, language, git status, configs, dependencies |
+| Tool Executor | ✅ | Unified execution: permission check → tool execute → output capture → events. Unified result: `{success, output, error, metadata}` |
+| Observation System | ✅ | Structured observations after every action: success/fail, summary, metadata, issues, suggestions |
+| Agent Roles | ✅ | **Planner** (decides next action), **CodeGen** (produces file content only), **Observer** (examines results), **Reviewer** (validates code/commands) |
+| Reasoning Loop | ✅ | `AgentLoop` — observe → plan → codegen → review → execute → observe → update → repeat. Never assumes plan is valid after action |
+| Auto Recovery | ✅ | `analyzeFailure()` — detects failure type, creates repair tasks (install deps, create dirs, retry). `isHumanRequired()` for permissions |
+| Verification | ✅ | `verifyCompletion()` — checks files exist, queue empty, no critical errors, build succeeds |
+| Expanded Events | ✅ | 15 new EventStream event types: reasoning_started, action_created, tool_started, observation_recorded, retry_started, goal_completed, etc. |
+
+### New Files (src/lib/agent/)
+
+| File | Purpose |
+|------|---------|
+| `actions.js` | Action type constants, factory, type→tool mapping |
+| `AgentState.js` | Central state: goal, queue, files, observations, retry, context builder |
+| `AgentLoop.js` | Main reasoning loop orchestrating all roles |
+| `TaskQueue.js` | Dynamic task queue with insert/reorder/remove |
+| `ToolExecutor.js` | Unified tool execution: permission, execute, capture, emit |
+| `WorkspaceScanner.js` | Lightweight workspace inspection |
+| `Observation.js` | Structured observation factory and formatting |
+| `verify.js` | Completion verification (files, commands, queue, errors) |
+| `recovery.js` | Failure analysis and repair task generation |
+| `roles/Planner.js` | Decides next action (JSON output, never code) |
+| `roles/CodeGen.js` | Generates file content only |
+| `roles/Observer.js` | Examines tool results |
+| `roles/Reviewer.js` | Validates code (braces, parens, JSON, dangerous patterns) |
+
+### Architecture Flow
+
+```
+User Goal
+    │
+    ▼
+AgentLoop.run()
+    │
+    ├── AgentState initialized
+    ├── WorkspaceScanner — gather context
+    │
+    ▼
+Loop (until done or abort):
+    │
+    ├── Planner: decide next action (typed: WRITE_FILE, RUN_COMMAND, etc.)
+    ├── CodeGen: if WRITE_FILE, generate content
+    ├── Reviewer: validate generated code
+    ├── ToolExecutor: permission check → execute → capture
+    ├── Observer: build structured observation
+    ├── AgentState: update files, tasks, errors, observations
+    ├── Recovery: if failed, create repair tasks
+    ├── EventStream: emit typed events for UI
+    │
+    ▼
+VerifyCompletion: files exist? commands ok? queue empty? no errors?
+    │
+    ├── Yes → mark complete, return results
+    └── No  → retry with repair tasks
+```
 
 ### Week 4 — RAG + Polish
 
@@ -216,7 +270,7 @@ note_ai-main/
 │   │   ├── aiRouter.js         Re-exports + legacy wrappers
 │   │   ├── ai.js               Legacy API surface
 │   │   ├── db.js               Legacy CRUD helpers
-│   │   ├── agent/              Agent system (EventStream, tools, policy, pipeline)
+│   │   ├── agent/              Agent system v2 (AgentState, AgentLoop, ToolExecutor, TaskQueue, WorkspaceScanner, Observation, recovery, verify, actions, roles/)
 │   │   └── rag/                Vector RAG system
 │   ├── components/             React components
 │   │   └── workspace/          Workspace UI (Sidebar v2, TopBar, AIPanel, etc.)
