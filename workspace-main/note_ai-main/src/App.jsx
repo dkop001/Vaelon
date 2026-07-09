@@ -22,6 +22,7 @@ import {
   LayoutGrid, BookOpen, ClipboardPaste, Share2,
 } from 'lucide-react';
 import HomeDashboard from './features/search/HomeDashboard';
+import SearchPage from './features/search/SearchPage';
 import StudyCenter from './features/study/StudyCenter';
 import { useNoteStore } from './store/noteStore';
 import { useAppStore } from './store/appStore';
@@ -506,8 +507,13 @@ function PlaceholderView({ view }) {
               </Suspense>
             )}
 
+            {/* ── Search page ── */}
+            {activeView === 'search' && (
+              <SearchPage />
+            )}
+
             {/* ── Remaining placeholder views ── */}
-            {isPlacholderView && activeView !== 'study' && (
+            {isPlacholderView && activeView !== 'study' && activeView !== 'search' && (
               <div className="workspace-content">
                 <PlaceholderView view={activeView} />
               </div>

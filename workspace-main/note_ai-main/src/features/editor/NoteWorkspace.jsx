@@ -5,7 +5,6 @@ import { extractTextFromImage, getImageConfidence } from '../../lib/ocr';
 import { extractTextFromPdf } from '../../lib/pdf';
 import RichEditor from './RichEditor';
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
 const IconUpload = () => (
   <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
     <path d="M7 1v8M4 4l3-3 3 3M2 11h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -28,6 +27,11 @@ const IconPdf = () => (
 const IconTrash = () => (
   <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
     <path d="M2.5 3.5h9M5 3.5v-1.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M5.5 6v4M8.5 6v4M3.5 3.5l.5 8a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1l.5-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+const IconPin = () => (
+  <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+    <path d="M7.5 1 11 4.5l-2 1-1 4-2.5 1.5L3 8.5 1.5 6 3 3.5l4-1 1-2L7.5 1Z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
   </svg>
 );
 const IconAI = () => (
@@ -62,8 +66,17 @@ const IconX = () => (
     <path d="M1 1l9 9M10 1 1 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
   </svg>
 );
+const IconTag = () => (
+  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+    <path d="M2 1h4l5 5-5 5-5-5V2a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
+  </svg>
+);
+const IconExport = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <path d="M6 1v7M3 5l3 3 3-3M1.5 9.5h9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
-// ── Confidence badge ───────────────────────────────────────────────────────────
 function ConfidenceBadge({ level }) {
   const map = {
     high:   { bg: 'var(--success-muted)', color: 'var(--success)', label: 'OCR: High' },
@@ -81,8 +94,7 @@ function ConfidenceBadge({ level }) {
   );
 }
 
-// ── Upload dropdown ────────────────────────────────────────────────────────────
-function UploadMenu({ onImageClick, onPdfClick, onClose, disabled }) {
+function UploadMenu({ onImageClick, onPdfClick, disabled }) {
   return (
     <div style={{
       position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
@@ -132,14 +144,102 @@ function UploadMenu({ onImageClick, onPdfClick, onClose, disabled }) {
   );
 }
 
-// ── NoteWorkspace ──────────────────────────────────────────────────────────────
+function TagInput({ noteId, existingTags, onAddTag, onRemoveTag }) {
+  const [value, setValue] = useState('');
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && value.trim()) {
+      e.preventDefault();
+      onAddTag(noteId, value.trim());
+      setValue('');
+    }
+    if (e.key === ',' && value.trim()) {
+      e.preventDefault();
+      onAddTag(noteId, value.trim().replace(/,/g, ''));
+      setValue('');
+    }
+    if (e.key === 'Backspace' && !value && existingTags.length > 0) {
+      onRemoveTag(noteId, existingTags[existingTags.length - 1]);
+    }
+  };
+
+  return (
+    <div className="tag-input-wrapper">
+      <IconTag />
+      {existingTags.map(tag => (
+        <span key={tag} className="tag-badge">
+          {tag}
+          <button className="tag-remove" onClick={() => onRemoveTag(noteId, tag)}>
+            <IconX />
+          </button>
+        </span>
+      ))}
+      <input
+        type="text"
+        className="tag-input"
+        placeholder={existingTags.length === 0 ? 'Add tags...' : ''}
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        aria-label="Add tags"
+      />
+    </div>
+  );
+}
+
+function ExportMenu({ note, onClose }) {
+  const exportAs = (format) => {
+    if (format === 'md') {
+      const md = `# ${note.title || 'Untitled'}\n\n${stripHtml(note.content || '')}`;
+      downloadFile(`${note.title || 'note'}.md`, md, 'text/markdown');
+    } else {
+      const json = JSON.stringify(note, null, 2);
+      downloadFile(`${note.title || 'note'}.json`, json, 'application/json');
+    }
+    onClose();
+  };
+
+  return (
+    <div style={{
+      position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+      background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-lg)',
+      padding: 6, minWidth: 140,
+    }}>
+      <button className="export-option" onClick={() => exportAs('md')}>
+        Export as Markdown
+      </button>
+      <button className="export-option" onClick={() => exportAs('json')}>
+        Export as JSON
+      </button>
+    </div>
+  );
+}
+
+function stripHtml(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  return d.textContent || d.innerText || '';
+}
+
+function downloadFile(name, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function NoteWorkspace({ onStatsChange }) {
-  const { getActiveNote, updateNote, deleteNote } = useNoteStore();
+  const { getActiveNote, updateNote, deleteNote, togglePin, addTag, removeTag } = useNoteStore();
   const { openRightPanel } = useAppStore();
 
   const [isExtracting, setIsExtracting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [ocrConfidence, setOcrConfidence] = useState('');
 
   const imageInputRef = useRef(null);
@@ -148,13 +248,10 @@ export default function NoteWorkspace({ onStatsChange }) {
 
   const activeNote = getActiveNote();
 
-  // ── Empty state ──────────────────────────────────────────────────────────
   if (!activeNote) {
     return (
       <div className="empty-state animate-fade-in">
-        <div className="empty-state-icon">
-          <IconNote />
-        </div>
+        <div className="empty-state-icon"><IconNote /></div>
         <div className="empty-state-title">No note selected</div>
         <div className="empty-state-desc">
           Select a note from the sidebar or create a new one to start writing.
@@ -162,6 +259,12 @@ export default function NoteWorkspace({ onStatsChange }) {
       </div>
     );
   }
+
+  const tags = (() => {
+    if (!activeNote.tags) return [];
+    if (Array.isArray(activeNote.tags)) return activeNote.tags;
+    try { return JSON.parse(activeNote.tags); } catch { return []; }
+  })();
 
   const handleContentChange = useCallback((htmlContent, plainText) => {
     updateNote(activeNote.id, { content: htmlContent });
@@ -195,7 +298,7 @@ export default function NoteWorkspace({ onStatsChange }) {
         try {
           const conf = await getImageConfidence(file);
           setOcrConfidence(conf);
-        } catch { /* ignored */ }
+        } catch {}
       } else {
         extracted = await extractTextFromPdf(file);
       }
@@ -211,19 +314,14 @@ export default function NoteWorkspace({ onStatsChange }) {
     }
   };
 
-  // Format timestamp
-  const updatedLabel = activeNote.updatedAt
-    ? new Date(activeNote.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const updatedLabel = activeNote.updated_at
+    ? new Date(activeNote.updated_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '';
 
   return (
     <div className="note-workspace animate-fade-in">
-      {/* ── Note editor card ── */}
       <div className="note-editor-card">
-
-        {/* Header */}
         <div className="note-editor-header">
-          {/* Title input */}
           <input
             className="note-title-input"
             value={activeNote.title || ''}
@@ -233,30 +331,31 @@ export default function NoteWorkspace({ onStatsChange }) {
             id="note-title-input"
           />
 
-          {/* Right actions */}
           <div className="note-header-actions">
             {isExtracting && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)', fontSize: 'var(--text-xs)' }}>
-                <IconSpinner />
-                <span>Extracting…</span>
+                <IconSpinner /><span>Extracting...</span>
               </div>
             )}
-
             {ocrConfidence && <ConfidenceBadge level={ocrConfidence} />}
 
-            {/* Upload button */}
+            <button
+              className={`btn btn-sm ${activeNote.pinned ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => togglePin(activeNote.id)}
+              title={activeNote.pinned ? 'Unpin note' : 'Pin note'}
+              style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              <IconPin /> {activeNote.pinned ? 'Pinned' : 'Pin'}
+            </button>
+
             <div style={{ position: 'relative' }}>
               <button
                 className="btn btn-sm btn-secondary"
                 onClick={() => setUploadOpen(o => !o)}
                 disabled={isExtracting}
                 title="Add source document"
-                aria-label="Upload document"
-                id="note-upload-btn"
               >
-                <IconUpload />
-                Add Source
-                <IconChevronDown />
+                <IconUpload /> Add Source <IconChevronDown />
               </button>
               {uploadOpen && (
                 <UploadMenu
@@ -268,13 +367,22 @@ export default function NoteWorkspace({ onStatsChange }) {
               )}
             </div>
 
-            {/* Delete */}
+            <div style={{ position: 'relative' }}>
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => setExportOpen(o => !o)}
+                title="Export note"
+                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <IconExport /> Export
+              </button>
+              {exportOpen && <ExportMenu note={activeNote} onClose={() => setExportOpen(false)} />}
+            </div>
+
             <button
               className="btn btn-sm btn-ghost"
               onClick={deleteActiveNote}
               title="Delete note"
-              aria-label="Delete note"
-              id="note-delete-btn"
               style={{ color: 'var(--tx-tertiary)' }}
               onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'var(--danger-muted)'; }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--tx-tertiary)'; e.currentTarget.style.background = 'transparent'; }}
@@ -283,12 +391,10 @@ export default function NoteWorkspace({ onStatsChange }) {
             </button>
           </div>
 
-          {/* Hidden file inputs */}
           <input type="file" ref={imageInputRef} accept="image/*" style={{ display: 'none' }} onChange={e => handleFileUpload(e, 'image')} />
           <input type="file" ref={pdfInputRef} accept="application/pdf" style={{ display: 'none' }} onChange={e => handleFileUpload(e, 'pdf')} />
         </div>
 
-        {/* Note metadata bar */}
         <div className="note-meta-bar">
           {updatedLabel && <span>Last edited {updatedLabel}</span>}
           {activeNote.sourceFile && (
@@ -298,7 +404,7 @@ export default function NoteWorkspace({ onStatsChange }) {
               background: 'var(--accent-muted)', color: 'var(--accent)',
               fontSize: 10, fontWeight: 600,
             }}>
-              📄 {activeNote.sourceFile.name}
+              {activeNote.sourceFile.name}
               <button
                 onClick={() => updateNote(activeNote.id, { sourceFile: null })}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', display: 'flex', padding: 0, marginLeft: 2 }}
@@ -310,7 +416,16 @@ export default function NoteWorkspace({ onStatsChange }) {
           )}
         </div>
 
-        {/* Status message */}
+        {/* Tags */}
+        <div className="note-tags-bar">
+          <TagInput
+            noteId={activeNote.id}
+            existingTags={tags}
+            onAddTag={addTag}
+            onRemoveTag={removeTag}
+          />
+        </div>
+
         {statusMsg && (
           <div style={{
             padding: '8px 20px', background: 'var(--accent-muted)',
@@ -322,15 +437,13 @@ export default function NoteWorkspace({ onStatsChange }) {
           </div>
         )}
 
-        {/* Rich Editor */}
         <RichEditor
           ref={editorRef}
           content={activeNote.content || ''}
           onChange={handleContentChange}
-          placeholder="Start writing… type / for blocks, or paste content here"
+          placeholder="Start writing... type / for blocks, or paste content here"
         />
 
-        {/* Footer CTA bar */}
         <div className="note-editor-footer">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
