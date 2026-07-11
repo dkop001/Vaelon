@@ -46,7 +46,7 @@ const ToolbarBtn = ({ onClick, active, title, children }: ToolbarBtnProps) => (
 function BubbleBar({ editor }: { editor: Editor | null }) {
   if (!editor) return null;
   return (
-    <BubbleMenu editor={editor} tippyOptions={{ duration: 120, placement: 'top' }}>
+    <BubbleMenu editor={editor}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 2, padding: 4,
         background: 'var(--bg-elevated)', border: '1px solid var(--border)',

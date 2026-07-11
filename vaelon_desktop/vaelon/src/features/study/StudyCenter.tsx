@@ -20,18 +20,13 @@ const IconX = () => (
     <path d="m2.5 2.5 9 9M11.5 2.5l-9 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
   </svg>
 );
-const IconRefresh = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path d="M13 3.5A6 6 0 1 0 12.5 9M13 1v3h-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
 const IconAI = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
     <path d="M7 1 8.3 5H12L9 7.5l1.1 4L7 9.2 3.9 11.5 5 7.5 2 5h3.7L7 1Z" fill="currentColor"/>
   </svg>
 );
 const IconSpinner = () => (
-  <svg width="15" height="15" viewBox="0 0 14 14" fill="none" className="animate-spin">
+  <svg width="15" height="15" viewBox="0 0 14 14" fill="none" style={{ animation: 'spin 1s linear infinite' }}>
     <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.4" strokeDasharray="18 10" strokeLinecap="round"/>
   </svg>
 );
@@ -54,10 +49,22 @@ const IconTrophy = () => (
   </svg>
 );
 
+interface Question {
+  question: string;
+  options: string[];
+  correctAnswerIndex: number;
+  explanation?: string;
+}
+
 // ── Quiz Session ──────────────────────────────────────────────────────────────
-function QuizSession({ questions, onFinished }) {
+interface QuizSessionProps {
+  questions: Question[];
+  onFinished: () => void;
+}
+
+function QuizSession({ questions, onFinished }: QuizSessionProps) {
   const [idx, setIdx] = useState(0);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [done, setDone] = useState(false);
@@ -65,7 +72,7 @@ function QuizSession({ questions, onFinished }) {
   const q = questions[idx];
   const progress = ((idx + (answered ? 1 : 0)) / questions.length) * 100;
 
-  const handleSelect = (optIdx) => {
+  const handleSelect = (optIdx: number) => {
     if (answered) return;
     setSelected(optIdx);
     setAnswered(true);
@@ -118,75 +125,49 @@ function QuizSession({ questions, onFinished }) {
         <div style={{ position: 'relative', width: 100, height: 100, margin: '0 auto var(--sp-12)' }}>
           <svg width="100" height="100" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="40" stroke="var(--border)" strokeWidth="8" fill="none"/>
-            <circle
-              cx="50" cy="50" r="40" stroke={grade.color} strokeWidth="8" fill="none"
+            <circle cx="50" cy="50" r="40" stroke={grade.color} strokeWidth="8" fill="none"
               strokeDasharray={`${2 * Math.PI * 40}`}
               strokeDashoffset={`${2 * Math.PI * 40 * (1 - pct / 100)}`}
-              strokeLinecap="round"
               transform="rotate(-90 50 50)"
-              style={{ transition: 'stroke-dashoffset 1s ease' }}
+              strokeLinecap="round"
             />
           </svg>
           <div style={{
-            position: 'absolute', inset: 0, display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, fontWeight: 800, color: grade.color,
+            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 'var(--text-md)', fontWeight: 800, color: 'var(--tx-primary)',
           }}>
             {pct}%
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 'var(--sp-4)', justifyContent: 'center' }}>
-          <button className="btn btn-secondary" onClick={restart} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <IconRefresh /> Retry
-          </button>
-          <button className="btn btn-primary" onClick={onFinished} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            Done <IconArrow />
-          </button>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <button className="btn btn-secondary" onClick={restart}>Retry Quiz</button>
+          <button className="btn btn-primary" onClick={onFinished}>Finish</button>
         </div>
       </div>
     );
   }
 
-  // ── Question screen ──────────────────────────────────────────────────────
   return (
-    <div className="study-quiz-card animate-fade-in">
-      {/* Progress */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-4)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)', color: 'var(--tx-tertiary)', fontWeight: 600 }}>
-          <span style={{
-            background: 'var(--accent-muted)', color: 'var(--accent)',
-            padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: 10,
-          }}>Q {idx + 1} / {questions.length}</span>
-        </div>
-        <div style={{
-          background: 'var(--success-muted)', color: 'var(--success)',
-          padding: '2px 8px', borderRadius: 'var(--radius-full)',
-          fontSize: 10, fontWeight: 700,
-        }}>
-          Score: {score}
-        </div>
-      </div>
-
+    <div className="study-quiz-card animate-fade-in" style={{ padding: 'var(--sp-6) var(--sp-8)' }}>
       {/* Progress bar */}
-      <div style={{
-        height: 4, background: 'var(--border)', borderRadius: 'var(--radius-full)',
-        overflow: 'hidden', marginBottom: 'var(--sp-8)',
-      }}>
-        <div style={{
-          height: '100%', width: `${progress}%`,
-          background: 'var(--grad-brand)', borderRadius: 'inherit',
-          transition: 'width .4s ease',
-        }} />
+      <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, marginBottom: 'var(--sp-6)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${progress}%`, background: 'var(--accent)', transition: 'width 0.3s ease' }} />
       </div>
 
-      {/* Question */}
-      <h2 style={{
-        fontSize: 'var(--text-2xl)', fontWeight: 700, color: 'var(--tx-primary)',
-        lineHeight: 1.4, marginBottom: 'var(--sp-8)', letterSpacing: '-.02em',
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-5)' }}>
+        <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--tx-disabled)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+          Question {idx + 1} of {questions.length}
+        </span>
+        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--success)', fontWeight: 600 }}>
+          Score: {score}
+        </span>
+      </div>
+
+      <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--tx-primary)', marginBottom: 'var(--sp-6)', lineHeight: 1.4 }}>
         {q.question}
-      </h2>
+      </h3>
 
       {/* Options */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
@@ -197,6 +178,7 @@ function QuizSession({ questions, onFinished }) {
           let border = 'var(--border)';
           let color = 'var(--tx-primary)';
           let icon = null;
+
           if (answered) {
             if (isCorrect) { bg = 'var(--success-muted)'; border = 'var(--success)'; color = 'var(--success)'; icon = <IconCheck />; }
             else if (isSelected) { bg = 'var(--danger-muted)'; border = 'var(--danger)'; color = 'var(--danger)'; icon = <IconX />; }
@@ -279,7 +261,7 @@ export default function StudyCenter() {
 
   const [selectedNoteId, setSelectedNoteId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activeQuiz, setActiveQuiz] = useState(null);
+  const [activeQuiz, setActiveQuiz] = useState<Question[] | null>(null);
   const [error, setError] = useState('');
 
   const activeNote = notes.find(n => n.id === selectedNoteId);
@@ -289,8 +271,8 @@ export default function StudyCenter() {
     if (!activeNote) return;
     setError('');
 
-    const cached = getAICache?.(activeNote.id, 'quiz');
-    if (cached?.length > 0) { setActiveQuiz(cached); return; }
+    const cached = getAICache(activeNote.id, 'quiz');
+    if (cached && cached.length > 0) { setActiveQuiz(cached); return; }
 
     setLoading(true);
     try {
@@ -302,12 +284,12 @@ export default function StudyCenter() {
       }
       const quiz = await generateQuiz(plainText);
       if (quiz && quiz.length > 0) {
-        setAICache?.(activeNote.id, 'quiz', quiz);
+        await setAICache(activeNote.id, 'quiz', quiz);
         setActiveQuiz(quiz);
       } else {
         setError('Could not generate quiz. Make sure the note has enough content.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Quiz generation failed:', err);
       setError(err.message || 'Failed to generate quiz. Please try again.');
     } finally {
@@ -392,7 +374,7 @@ export default function StudyCenter() {
               {notes.map(note => {
                 const words = note.content?.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(Boolean).length ?? 0;
                 const isSelected = note.id === selectedNoteId;
-                const hasQuiz = !!getAICache?.(note.id, 'quiz');
+                const hasQuiz = !!getAICache(note.id, 'quiz');
                 return (
                   <button
                     key={note.id}
@@ -461,7 +443,7 @@ export default function StudyCenter() {
                 <IconGrad />
               </div>
               <div style={{ fontWeight: 700, fontSize: 'var(--text-md)', color: 'var(--tx-primary)', marginBottom: 4 }}>
-                {loading ? 'Generating…' : getAICache?.(activeNote.id, 'quiz') ? 'Retry Quiz' : 'Start Quiz'}
+                {loading ? 'Generating…' : getAICache(activeNote.id, 'quiz') ? 'Retry Quiz' : 'Start Quiz'}
               </div>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--tx-secondary)' }}>
                 {wordCount} words · AI-generated MCQ
@@ -541,6 +523,7 @@ export default function StudyCenter() {
           ))}
         </div>
       </div>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

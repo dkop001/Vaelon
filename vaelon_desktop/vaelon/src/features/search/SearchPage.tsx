@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNoteStore } from '../../store/noteStore';
 import { useAppStore } from '../../store/appStore';
+import { Note } from '../../ipc/client';
 
 const IconSearch = () => (
   <svg width="18" height="18" viewBox="0 0 15 15" fill="none">
@@ -16,7 +17,7 @@ const IconNote = () => (
 );
 const IconX = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-    <path d="M1 1l10 10M11 1 1 11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    <path d="M1 1l10 10M11 1 1 10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
   </svg>
 );
 const IconClock = () => (
@@ -26,7 +27,7 @@ const IconClock = () => (
   </svg>
 );
 
-function timeAgo(iso) {
+function timeAgo(iso: string | undefined): string {
   if (!iso) return '';
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
   if (diff < 60) return 'just now';
@@ -35,27 +36,33 @@ function timeAgo(iso) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function stripHtml(html) {
+function stripHtml(html: string): string {
   const d = document.createElement('div');
   d.innerHTML = html;
   return d.textContent || d.innerText || '';
 }
 
-function highlight(text, query) {
+function highlight(text: string, query: string): string {
   if (!query) return text;
   const parts = text.split(new RegExp(`(${escapeRegex(query)})`, 'gi'));
-  return parts.map((part, i) =>
+  return parts.map((part) =>
     part.toLowerCase() === query.toLowerCase()
       ? `<mark class="search-highlight">${part}</mark>`
       : part
   ).join('');
 }
 
-function escapeRegex(str) {
+function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function ResultItem({ note, query, onOpen }) {
+interface ResultItemProps {
+  note: Note;
+  query: string;
+  onOpen: (id: string) => void;
+}
+
+function ResultItem({ note, query, onOpen }: ResultItemProps) {
   const plainText = stripHtml(note.content || '');
   const idx = plainText.toLowerCase().indexOf(query.toLowerCase());
   let preview = '';
@@ -74,7 +81,7 @@ function ResultItem({ note, query, onOpen }) {
         <div className="search-result-title" dangerouslySetInnerHTML={{ __html: highlight(note.title || 'Untitled', query) }} />
         <div className="search-result-preview" dangerouslySetInnerHTML={{ __html: highlight(preview, query) }} />
         <div className="search-result-meta">
-          <IconClock /> {timeAgo(note.updated_at || note.updatedAt)}
+          <IconClock /> {timeAgo(note.updated_at)}
           {note.pinned ? <span className="search-result-pin">Pinned</span> : null}
         </div>
       </div>
@@ -86,7 +93,7 @@ export default function SearchPage() {
   const { notes, setActiveNote } = useNoteStore();
   const { setActiveView } = useAppStore();
   const [query, setQuery] = useState('');
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -98,10 +105,10 @@ export default function SearchPage() {
         const title = (n.title || '').toLowerCase();
         const content = stripHtml(n.content || '').toLowerCase();
         return title.includes(q) || content.includes(q);
-      }).sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))
-    : notes.slice(0, 20).sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
+      }).sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())
+    : notes.slice(0, 20).sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
 
-  const openNote = (id) => {
+  const openNote = (id: string) => {
     setActiveNote(id);
     setActiveView('notes');
   };

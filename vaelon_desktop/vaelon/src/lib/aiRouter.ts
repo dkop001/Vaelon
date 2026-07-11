@@ -3,7 +3,19 @@
 
 import { api } from '../ipc/client';
 
-export async function complete({ messages, options = {}, onChunk, stream = true }) {
+export interface CompleteParams {
+  messages: { role: string; content: string }[];
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    jsonMode?: boolean;
+    sessionId?: string;
+  };
+  onChunk?: (chunk: string, accumulated: string) => void;
+  stream?: boolean;
+}
+
+export async function complete({ messages, options = {}, onChunk, stream = true }: CompleteParams): Promise<string> {
   if (stream) {
     const sessionId = options.sessionId || Math.random().toString();
     
@@ -11,12 +23,12 @@ export async function complete({ messages, options = {}, onChunk, stream = true 
     const listenName = 'llm:chunk';
     let unsub = () => {};
     
-    const promise = new Promise(async (resolve, reject) => {
+    const promise = new Promise<string>(async (resolve, reject) => {
       let accumulated = '';
       
       const setupListener = async () => {
         const { listen } = await import('@tauri-apps/api/event');
-        unsub = await listen(listenName, (ev) => {
+        unsub = await listen(listenName, (ev: any) => {
           const payload = ev.payload;
           if (payload && payload.session_id === sessionId) {
             accumulated += payload.content;
@@ -28,7 +40,7 @@ export async function complete({ messages, options = {}, onChunk, stream = true 
       await setupListener();
 
       const { listen: listenDone } = await import('@tauri-apps/api/event');
-      const unsubDone = await listenDone('llm:done', (ev) => {
+      const unsubDone = await listenDone('llm:done', (ev: any) => {
         const payload = ev.payload;
         if (payload && payload.session_id === sessionId) {
           unsub();
@@ -63,7 +75,7 @@ export async function complete({ messages, options = {}, onChunk, stream = true 
   }
 }
 
-export async function summarize(text, onChunk) {
+export async function summarize(text: string, onChunk?: (chunk: string, accumulated: string) => void): Promise<string> {
   const messages = [
     { role: 'system', content: 'Summarize the following text in 3 concise, clear bullet points.' },
     { role: 'user', content: text.slice(0, 4000) },
@@ -76,7 +88,7 @@ export async function summarize(text, onChunk) {
   });
 }
 
-export async function generateQuiz(text) {
+export async function generateQuiz(text: string): Promise<any[]> {
   const messages = [
     {
       role: 'system',
@@ -94,11 +106,20 @@ export async function generateQuiz(text) {
   const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
   if (arrayMatch) jsonStr = arrayMatch[0];
 
-  const parsed = JSON.parse(jsonStr);
-  return Array.isArray(parsed) ? parsed : [];
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
-export async function chat(userMessage, context, history = [], onChunk) {
+export async function chat(
+  userMessage: string,
+  context?: string,
+  history: { role: string; content?: string; text?: string }[] = [],
+  onChunk?: (chunk: string, accumulated: string) => void
+): Promise<string> {
   const truncatedContext = (context || '').slice(0, 1000);
   const messages = [
     { role: 'system', content: `You are a helpful AI assistant. Context: ${truncatedContext || 'none'}` },

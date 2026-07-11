@@ -1,8 +1,7 @@
 import { useAppStore } from '../../store/appStore';
 import { useAuth } from '../../context/AuthContext';
 
-// ── Icons (inline SVG micro-components) ──────────────────────────────────────
-
+// ── Icons ──────────────────────────────────────────────────────────────────────
 const IconMenu = () => (
   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
     <path d="M1.5 3h12M1.5 7.5h12M1.5 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -47,10 +46,11 @@ const IconNoteAI = () => (
   </svg>
 );
 
-// ── SyncBadge ─────────────────────────────────────────────────────────────────
+// ── SyncBadge ──────────────────────────────────────────────────────────────────
+type SyncState = 'synced' | 'syncing' | 'offline';
 
-function SyncBadge({ state }) {
-  const labels = { synced: 'Saved', syncing: 'Saving…', offline: 'Offline' };
+function SyncBadge({ state }: { state: SyncState }) {
+  const labels: Record<SyncState, string> = { synced: 'Saved', syncing: 'Saving…', offline: 'Offline' };
   return (
     <div className="topbar-sync-badge">
       <span className={`topbar-sync-dot ${state}`} />
@@ -59,11 +59,13 @@ function SyncBadge({ state }) {
   );
 }
 
-// ── Breadcrumb ────────────────────────────────────────────────────────────────
+// ── Breadcrumb ─────────────────────────────────────────────────────────────────
+type ActiveView = 'home' | 'notes' | 'study' | 'search' | 'settings' | 'chatHistory';
 
-function Breadcrumb({ activeView, noteTitle }) {
-  const viewLabels = {
-    home: 'Home', notes: 'Notes', study: 'Study', search: 'Search', settings: 'Settings',
+function Breadcrumb({ activeView, noteTitle }: { activeView: ActiveView; noteTitle?: string }) {
+  const viewLabels: Record<string, string> = {
+    home: 'Home', notes: 'Notes', study: 'Study', search: 'Search',
+    settings: 'Settings', chatHistory: 'Chat History',
   };
   const viewLabel = viewLabels[activeView] ?? activeView;
   return (
@@ -81,13 +83,17 @@ function Breadcrumb({ activeView, noteTitle }) {
   );
 }
 
-// ── TopBar ────────────────────────────────────────────────────────────────────
+// ── TopBar ─────────────────────────────────────────────────────────────────────
+interface TopBarProps {
+  noteTitle?: string;
+  onSettingsOpen: () => void;
+}
 
-export default function TopBar({ noteTitle, onSettingsOpen }) {
+export default function TopBar({ noteTitle, onSettingsOpen }: TopBarProps) {
   const {
     theme, toggleTheme, toggleSidebar, openCmd,
     rightPanelOpen, toggleRightPanel, syncState, activeView,
-    toggleMobileSidebar, setActiveView, activeMode, setActiveMode,
+    toggleMobileSidebar, setActiveMode, activeMode,
   } = useAppStore();
   const { user, signOut } = useAuth();
 
@@ -97,10 +103,9 @@ export default function TopBar({ noteTitle, onSettingsOpen }) {
     <header className="topbar workspace-topbar" role="banner">
       {/* Hamburger (mobile) */}
       <button
-        className="topbar-btn"
+        className="topbar-btn mobile-only"
         onClick={toggleMobileSidebar}
         aria-label="Toggle sidebar"
-        style={{ display: 'none' }}
         id="mobile-sidebar-toggle"
       >
         <IconMenu />
@@ -144,7 +149,7 @@ export default function TopBar({ noteTitle, onSettingsOpen }) {
 
       <div className="topbar-spacer" />
 
-      {/* Search trigger */}
+      {/* Search / Cmd trigger */}
       <button
         className="topbar-search-trigger"
         onClick={openCmd}
@@ -198,7 +203,15 @@ export default function TopBar({ noteTitle, onSettingsOpen }) {
 
         {/* User menu */}
         {user && (
-          <div className="topbar-user" title="Sign out" onClick={signOut} role="button" tabIndex={0} id="topbar-user">
+          <div
+            className="topbar-user"
+            title="Sign out"
+            onClick={signOut}
+            role="button"
+            tabIndex={0}
+            id="topbar-user"
+            onKeyDown={(e) => e.key === 'Enter' && signOut()}
+          >
             <div className="topbar-avatar" aria-hidden="true">{initials}</div>
             <span className="topbar-user-email">{user.email}</span>
             <IconLogOut />

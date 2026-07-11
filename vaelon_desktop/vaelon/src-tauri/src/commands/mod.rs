@@ -6,6 +6,7 @@ use crate::agent::{AgentCompletedEvent, AgentManager};
 use crate::db::{models::*, queries::*, DbPool};
 use crate::fs::{self, FsEntry};
 use crate::llm::{self, LlmSettings, ModelInfo};
+use crate::rag::indexer;
 use crate::terminal::TerminalManager;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -90,14 +91,30 @@ pub fn note_create_cmd(
     project_id: String,
     title: String,
 ) -> Result<Note, String> {
-    let n = Note::new(workspace_id, project_id, title);
+    let n = Note::new(workspace_id.clone(), project_id.clone(), title);
     note_create(&state.db, &n).map_err(|e| e.to_string())?;
+    // Re-index the note (async, fire-and-forget)
+    let db = state.db.clone();
+    let settings = state.llm_settings.lock().unwrap().clone();
+    let note_clone = n.clone();
+    tokio::spawn(async move {
+        let _ = indexer::index_note(&db, &note_clone.id, &note_clone.title, &note_clone.content, 
+            &settings.ollama_base_url, settings.ollama_model.as_deref()).await;
+    });
     Ok(n)
 }
 
 #[tauri::command]
 pub fn note_update_cmd(state: State<AppState>, note: Note) -> Result<Note, String> {
     note_update(&state.db, &note).map_err(|e| e.to_string())?;
+    // Re-index the updated note
+    let db = state.db.clone();
+    let settings = state.llm_settings.lock().unwrap().clone();
+    let note_clone = note.clone();
+    tokio::spawn(async move {
+        let _ = indexer::index_note(&db, &note_clone.id, &note_clone.title, &note_clone.content, 
+            &settings.ollama_base_url, settings.ollama_model.as_deref()).await;
+    });
     Ok(note)
 }
 
@@ -113,6 +130,20 @@ pub fn note_search_cmd(
     query: String,
 ) -> Result<Vec<SearchResult>, String> {
     note_search_fts(&state.db, &workspace_id, &query).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn note_semantic_search_cmd(
+    state: State<'_, AppState>,
+    workspace_id: String,
+    query: String,
+    top_k: Option<usize>,
+) -> Result<Vec<indexer::SearchResult>, String> {
+    let settings = state.llm_settings.lock().unwrap().clone();
+    indexer::semantic_search(&state.db, &workspace_id, &query, top_k.unwrap_or(5), 
+        &settings.ollama_base_url, settings.ollama_model.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ── Chat Commands ─────────────────────────────────────────────────────────

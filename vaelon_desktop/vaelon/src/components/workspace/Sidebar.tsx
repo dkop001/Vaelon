@@ -186,17 +186,20 @@ export default function Sidebar({ onNewNote, onDeleteNote, onSelectNote, loading
       id="workspace-sidebar"
     >
       <nav className="sidebar-section" aria-label="Main navigation">
-        {NAV.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            className={`sidebar-item ${(activeView === id || (id === 'chatHistory' && sidebarMode === 'chatHistory')) ? 'active' : ''}`}
-            onClick={() => handleNavClick(id)}
-            id={`sidebar-nav-${id}`}
-          >
-            <span className="sidebar-item-icon"><Icon /></span>
-            {label}
-          </button>
-        ))}
+        {NAV.map(({ id, label, Icon }) => {
+          const isActive = activeView === id || (id === 'chatHistory' && (sidebarMode as 'nav' | 'chatHistory') === 'chatHistory');
+          return (
+            <button
+              key={id}
+              className={`sidebar-item ${isActive ? 'active' : ''}`}
+              onClick={() => handleNavClick(id)}
+              id={`sidebar-nav-${id}`}
+            >
+              <span className="sidebar-item-icon"><Icon /></span>
+              {label}
+            </button>
+          );
+        })}
       </nav>
 
       <div className="sidebar-divider" />

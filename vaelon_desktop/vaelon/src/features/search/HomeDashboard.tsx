@@ -1,5 +1,7 @@
+import React from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useNoteStore } from '../../store/noteStore';
+import { Note } from '../../ipc/client';
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const IconPlus = () => (
@@ -48,7 +50,7 @@ const IconArrow = () => (
 );
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-function timeAgo(iso) {
+function timeAgo(iso: string | undefined): string {
   if (!iso) return '';
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
   if (diff < 60) return 'just now';
@@ -57,7 +59,7 @@ function timeAgo(iso) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function greeting() {
+function greeting(): string {
   const h = new Date().getHours();
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
@@ -65,7 +67,15 @@ function greeting() {
 }
 
 // ── Stat Card ──────────────────────────────────────────────────────────────────
-function StatCard({ icon: Icon, value, label, colorClass, onClick }) {
+interface StatCardProps {
+  icon: React.ComponentType;
+  value: string | number;
+  label: string;
+  colorClass: string;
+  onClick?: () => void;
+}
+
+function StatCard({ icon: Icon, value, label, colorClass, onClick }: StatCardProps) {
   return (
     <div className="stat-card" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
       <div className={`stat-card-icon ${colorClass}`}>
@@ -78,7 +88,12 @@ function StatCard({ icon: Icon, value, label, colorClass, onClick }) {
 }
 
 // ── Note Card ─────────────────────────────────────────────────────────────────
-function NoteCard({ note, onOpen }) {
+interface NoteCardProps {
+  note: Note;
+  onOpen: (id: string) => void;
+}
+
+function NoteCard({ note, onOpen }: NoteCardProps) {
   const plainText = note.content?.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() || '';
   return (
     <div className="note-card card-hoverable" onClick={() => onOpen(note.id)}>
@@ -89,10 +104,10 @@ function NoteCard({ note, onOpen }) {
       <div className="note-card-preview">
         {plainText || <span style={{ fontStyle: 'italic', opacity: .6 }}>No content yet</span>}
       </div>
-      {note.updatedAt && (
+      {note.updated_at && (
         <div className="note-card-meta">
           <IconClock />
-          {timeAgo(note.updatedAt)}
+          {timeAgo(note.updated_at)}
         </div>
       )}
     </div>
@@ -100,7 +115,16 @@ function NoteCard({ note, onOpen }) {
 }
 
 // ── Quick Action ──────────────────────────────────────────────────────────────
-function QuickAction({ icon: Icon, label, sub, bg, color, onClick }) {
+interface QuickActionProps {
+  icon: React.ComponentType;
+  label: string;
+  sub?: string;
+  bg: string;
+  color: string;
+  onClick: () => void;
+}
+
+function QuickAction({ icon: Icon, label, sub, bg, color, onClick }: QuickActionProps) {
   return (
     <div className="quick-action-card" onClick={onClick}>
       <div className="quick-action-icon" style={{ background: bg, color }}>
@@ -115,13 +139,17 @@ function QuickAction({ icon: Icon, label, sub, bg, color, onClick }) {
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
-export default function HomeDashboard({ onNewNote }) {
+interface HomeDashboardProps {
+  onNewNote: () => void;
+}
+
+export default function HomeDashboard({ onNewNote }: HomeDashboardProps) {
   const { setActiveView, openCmd, openRightPanel } = useAppStore();
   const { notes } = useNoteStore();
 
   const recentNotes = notes.slice(0, 6);
 
-  const openNote = (id) => {
+  const openNote = (id: string) => {
     useNoteStore.getState().setActiveNote(id);
     setActiveView('notes');
   };
@@ -182,7 +210,7 @@ export default function HomeDashboard({ onNewNote }) {
         />
         <StatCard
           icon={IconStudy}
-          value={notes.filter(n => n.content?.length > 50).length}
+          value={notes.filter(n => (n.content || '').length > 50).length}
           label="Ready for study"
           colorClass="pink"
           onClick={() => setActiveView('study')}

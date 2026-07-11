@@ -6,6 +6,7 @@ pub mod commands;
 pub mod db;
 pub mod fs;
 pub mod llm;
+pub mod rag;
 pub mod terminal;
 
 use commands::AppState;
