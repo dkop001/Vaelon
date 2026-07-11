@@ -1,11 +1,15 @@
 import { useAppStore } from '../../store/appStore';
 import { useNoteStore } from '../../store/noteStore';
 
-export default function StatusBar({ wordCount = 0, charCount = 0 }) {
-  const { syncState, theme, activeView, openCmd, openRightPanel } = useAppStore();
-  const { activeNoteId, notes } = useNoteStore();
+interface StatusBarProps {
+  wordCount?: number;
+  charCount?: number;
+}
 
-  const activeNote = notes.find(n => n.id === activeNoteId);
+export default function StatusBar({ wordCount = 0, charCount = 0 }: StatusBarProps) {
+  const { syncState, theme, activeView, openCmd, openRightPanel } = useAppStore();
+  const { activeNoteId } = useNoteStore();
+
   const syncLabels = { synced: 'All changes saved', syncing: 'Saving…', offline: 'Offline' };
   const syncColors = { synced: 'var(--success)', syncing: 'var(--warning)', offline: 'var(--danger)' };
 

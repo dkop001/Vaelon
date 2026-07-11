@@ -74,6 +74,7 @@ pub fn run() {
             // Chat
             commands::chat_session_list_cmd,
             commands::chat_session_create_cmd,
+            commands::chat_session_delete_cmd,
             commands::chat_messages_list_cmd,
             commands::chat_send_cmd,
             // LLM

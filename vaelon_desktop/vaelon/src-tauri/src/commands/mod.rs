@@ -137,6 +137,11 @@ pub fn chat_session_create_cmd(
 }
 
 #[tauri::command]
+pub fn chat_session_delete_cmd(state: State<AppState>, id: String) -> Result<(), String> {
+    chat_session_delete(&state.db, &id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn chat_messages_list_cmd(
     state: State<AppState>,
     session_id: String,

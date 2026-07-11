@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useNoteStore } from '../../store/noteStore';
+import { Note } from '../../ipc/client';
 import ChatHistoryPanel from './ChatHistoryPanel';
 
 // ── Inline SVGs ───────────────────────────────────────────────────────────
@@ -67,7 +68,14 @@ const NAV = [
   { id: 'search',   label: 'Search',      Icon: IconSearch },
 ];
 
-function NoteRow({ note, isActive, onSelect, onDelete }) {
+interface NoteRowProps {
+  note: Note;
+  isActive: boolean;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function NoteRow({ note, isActive, onSelect, onDelete }: NoteRowProps) {
   const [hover, setHover] = useState(false);
   const tags = getTags(note);
 
@@ -112,7 +120,13 @@ function NoteRow({ note, isActive, onSelect, onDelete }) {
   );
 }
 
-function TagPill({ tag, active, onClick }) {
+interface TagPillProps {
+  tag: string;
+  active: boolean;
+  onClick: (tag: string) => void;
+}
+
+function TagPill({ tag, active, onClick }: TagPillProps) {
   return (
     <button
       className={`sidebar-tag-pill ${active ? 'active' : ''}`}
@@ -124,22 +138,29 @@ function TagPill({ tag, active, onClick }) {
   );
 }
 
-function getTags(note) {
+function getTags(note: Note): string[] {
   if (!note || !note.tags) return [];
   if (Array.isArray(note.tags)) return note.tags;
-  try { return JSON.parse(note.tags); } catch { return []; }
+  try { return JSON.parse(note.tags as unknown as string); } catch { return []; }
 }
 
-export default function Sidebar({ onNewNote, onDeleteNote, onSelectNote, loadingNotes }) {
-  const { activeView, setActiveView, mobileSidebarOpen, sidebarMode, openChatHistory, closeChatHistory } = useAppStore();
-  const { notes, activeNoteId, searchText, setSearchText, filterTag, setFilterTag, getAllTags, getFilteredNotes } = useNoteStore();
+interface SidebarProps {
+  onNewNote: () => void;
+  onDeleteNote: (id: string) => void;
+  onSelectNote: (id: string) => void;
+  loadingNotes: boolean;
+}
 
-  const handleNavClick = (id) => {
+export default function Sidebar({ onNewNote, onDeleteNote, onSelectNote, loadingNotes }: SidebarProps) {
+  const { activeView, setActiveView, sidebarMode, setSidebarMode } = useAppStore();
+  const { activeNoteId, searchText, setSearchText, filterTag, setFilterTag, getAllTags, getFilteredNotes } = useNoteStore();
+
+  const handleNavClick = (id: string) => {
     if (id === 'chatHistory') {
-      openChatHistory();
+      setSidebarMode('chatHistory');
     } else {
-      closeChatHistory();
-      setActiveView(id);
+      setSidebarMode('nav');
+      setActiveView(id as 'home' | 'notes' | 'study' | 'search' | 'settings');
     }
   };
 
@@ -149,7 +170,7 @@ export default function Sidebar({ onNewNote, onDeleteNote, onSelectNote, loading
   if (sidebarMode === 'chatHistory') {
     return (
       <aside
-        className={`sidebar workspace-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}
+        className="sidebar workspace-sidebar"
         aria-label="Chat history"
         id="workspace-sidebar"
       >
@@ -160,7 +181,7 @@ export default function Sidebar({ onNewNote, onDeleteNote, onSelectNote, loading
 
   return (
     <aside
-      className={`sidebar workspace-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}
+      className="sidebar workspace-sidebar"
       aria-label="Left sidebar"
       id="workspace-sidebar"
     >

@@ -181,6 +181,12 @@ pub fn note_search_fts(pool: &DbPool, workspace_id: &str, query: &str) -> Result
 
 // ── Chat ──────────────────────────────────────────────────────────────────
 
+pub fn chat_session_delete(pool: &DbPool, id: &str) -> Result<()> {
+    let conn = pool.lock().unwrap();
+    conn.execute("DELETE FROM chat_sessions WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
 pub fn chat_session_create(pool: &DbPool, s: &ChatSession) -> Result<()> {
     let conn = pool.lock().unwrap();
     conn.execute(

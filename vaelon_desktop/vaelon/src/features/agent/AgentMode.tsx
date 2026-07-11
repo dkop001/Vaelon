@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useAgentStore, AgentTask, AgentObservation } from '../../store/agentStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useNoteStore } from '../../store/noteStore';
@@ -120,9 +120,9 @@ function StatsBar({ created, modified, actions, errors }: { created: number; mod
 // ── Main AgentMode ────────────────────────────────────────────────────────────
 export default function AgentMode() {
   const {
-    status, goal, tasks, observations, runId,
+    status, goal, tasks, observations,
     filesCreatedCount, filesModifiedCount, actionsCompletedCount, errorCount,
-    blockedActionId, blockedReason,
+    blockedReason,
     startAgent, stopAgent, approveAction, clearState,
   } = useAgentStore();
 

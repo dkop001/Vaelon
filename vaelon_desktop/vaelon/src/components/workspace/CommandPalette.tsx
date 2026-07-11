@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useNoteStore } from '../../store/noteStore';
+import { Note } from '../../ipc/client';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const IconSearch = () => (
@@ -53,9 +54,28 @@ const IconSettings = () => (
   </svg>
 );
 
+interface Command {
+  id: string;
+  label: string;
+  sub?: string;
+  Icon: React.ComponentType;
+  group: string;
+  kbd?: string[];
+  action: () => void;
+}
+
+interface BuildCommandsProps {
+  notes: Note[];
+  setActiveView: (view: 'home' | 'notes' | 'study' | 'search' | 'settings') => void;
+  setActiveNote: (id: string | null) => void;
+  onNewNote: () => void;
+  openRightPanel: (tab?: 'chat' | 'summary' | 'quiz') => void;
+  toggleTheme: () => void;
+}
+
 // ── Commands registry ─────────────────────────────────────────────────────────
-function buildCommands({ notes, setActiveView, setActiveNote, onNewNote, openRightPanel, toggleTheme }) {
-  const noteCommands = notes.map((n) => ({
+function buildCommands({ notes, setActiveView, setActiveNote, onNewNote, openRightPanel, toggleTheme }: BuildCommandsProps): Command[] {
+  const noteCommands: Command[] = notes.map((n) => ({
     id: `note-${n.id}`,
     label: n.title?.trim() || 'Untitled',
     sub: 'Open note',
@@ -143,16 +163,20 @@ function buildCommands({ notes, setActiveView, setActiveNote, onNewNote, openRig
   ];
 }
 
+interface CommandPaletteProps {
+  onNewNote: () => void;
+}
+
 // ── CommandPalette ─────────────────────────────────────────────────────────────
-export default function CommandPalette({ onNewNote }) {
+export default function CommandPalette({ onNewNote }: CommandPaletteProps) {
   const { cmdOpen, closeCmd, setActiveView, openRightPanel, toggleTheme } = useAppStore();
   const { notes, setActiveNote } = useNoteStore();
 
   const [query, setQuery] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const inputRef = useRef(null);
-  const listRef = useRef(null);
-  const selectedRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLDivElement>(null);
 
   const commands = buildCommands({ notes, setActiveView, setActiveNote, onNewNote, openRightPanel, toggleTheme });
 
@@ -168,7 +192,7 @@ export default function CommandPalette({ onNewNote }) {
     if (!acc[cmd.group]) acc[cmd.group] = [];
     acc[cmd.group].push(cmd);
     return acc;
-  }, {});
+  }, {} as Record<string, Command[]>);
 
   // Flat indexed list for keyboard navigation
   const flat = filtered;
@@ -189,7 +213,7 @@ export default function CommandPalette({ onNewNote }) {
 
   // Keyboard global listener for Cmd+K to open
   useEffect(() => {
-    const handleGlobal = (e) => {
+    const handleGlobal = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         if (!cmdOpen) useAppStore.getState().openCmd();
@@ -202,7 +226,7 @@ export default function CommandPalette({ onNewNote }) {
   // Arrow key / Enter / Escape navigation
   useEffect(() => {
     if (!cmdOpen) return;
-    const handle = (e) => {
+    const handle = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setSelectedIdx((i) => Math.min(i + 1, flat.length - 1));

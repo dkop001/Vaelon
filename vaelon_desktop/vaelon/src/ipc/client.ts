@@ -128,6 +128,7 @@ export const api = {
   chatSessionList: (workspaceId: string) => invoke<ChatSession[]>('chat_session_list_cmd', { workspaceId }),
   chatSessionCreate: (workspaceId: string, projectId: string) =>
     invoke<ChatSession>('chat_session_create_cmd', { workspaceId, projectId }),
+  chatSessionDelete: (id: string) => invoke<void>('chat_session_delete_cmd', { id }),
   chatMessagesList: (sessionId: string) => invoke<ChatMessage[]>('chat_messages_list_cmd', { sessionId }),
   chatSend: (sessionId: string, content: string, workspaceContext?: string) =>
     invoke<void>('chat_send_cmd', { params: { session_id: sessionId, content, workspace_context: workspaceContext } }),
