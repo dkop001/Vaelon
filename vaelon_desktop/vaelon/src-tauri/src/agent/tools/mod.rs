@@ -24,7 +24,16 @@ impl ToolExecutor {
             ActionType::RunCommand => self.run_command(action).await,
             ActionType::SearchCode => self.search_code(action).await,
             ActionType::FetchUrl   => self.fetch_url(action).await,
-            ActionType::Think      => ToolResult { success: true, output: action.description.clone().into(), error: None, exit_code: None },
+            ActionType::Think      => {
+                // Return the planner's actual reasoning so it lands in
+                // RECENT OBSERVATIONS on the next build_context() call.
+                let thought_content = action.thought
+                    .as_deref()
+                    .filter(|t| !t.is_empty())
+                    .unwrap_or(&action.description)
+                    .to_string();
+                ToolResult { success: true, output: Some(thought_content), error: None, exit_code: None }
+            }
             ActionType::Done       => ToolResult { success: true, output: Some("Done".into()), error: None, exit_code: Some(0) },
         }
     }

@@ -106,7 +106,7 @@ impl AgentManager {
         let pending_approvals = Arc::new(DashMap::<String, tokio::sync::oneshot::Sender<()>>::new());
         let pending_clone = pending_approvals.clone();
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let _ = app.emit("agent:reasoning_started", AgentStartedEvent {
                 run_id: run_id_clone.clone(),
                 goal: goal.clone(),
@@ -126,6 +126,7 @@ impl AgentManager {
                     let _ = app.emit("agent:goal_completed", summary);
                 }
                 Err(e) => {
+                    tracing::error!("Agent loop failed for run {}: {:?}", run_id_clone, e);
                     let _ = app.emit("agent:failed", serde_json::json!({
                         "run_id": run_id_clone,
                         "reason": e.to_string()
@@ -236,6 +237,10 @@ async fn agent_loop(
         // 6. Update state
         {
             let mut s = state.lock().unwrap();
+            // Always store the observation so build_context() surfaces it on
+            // the next iteration — both successes AND failures need to be
+            // visible to the Planner, otherwise it retries blindly.
+            s.observations.push(obs.clone());
             if obs.success {
                 s.record_completed(action.clone(), &result);
             } else {

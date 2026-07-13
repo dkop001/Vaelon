@@ -93,12 +93,14 @@ pub fn note_create_cmd(
 ) -> Result<Note, String> {
     let n = Note::new(workspace_id.clone(), project_id.clone(), title);
     note_create(&state.db, &n).map_err(|e| e.to_string())?;
-    // Re-index the note (async, fire-and-forget)
+    // Re-index the note (async, fire-and-forget).
+    // Must use tauri::async_runtime::spawn — this is a sync command running
+    // on the WebView2 IPC thread, outside the Tokio runtime.
     let db = state.db.clone();
     let settings = state.llm_settings.lock().unwrap().clone();
     let note_clone = n.clone();
-    tokio::spawn(async move {
-        let _ = indexer::index_note(&db, &note_clone.id, &note_clone.title, &note_clone.content, 
+    tauri::async_runtime::spawn(async move {
+        let _ = indexer::index_note(&db, &note_clone.id, &note_clone.title, &note_clone.content,
             &settings.ollama_base_url, settings.ollama_model.as_deref()).await;
     });
     Ok(n)
@@ -107,12 +109,13 @@ pub fn note_create_cmd(
 #[tauri::command]
 pub fn note_update_cmd(state: State<AppState>, note: Note) -> Result<Note, String> {
     note_update(&state.db, &note).map_err(|e| e.to_string())?;
-    // Re-index the updated note
+    // Re-index the updated note.
+    // Must use tauri::async_runtime::spawn — same reason as note_create_cmd.
     let db = state.db.clone();
     let settings = state.llm_settings.lock().unwrap().clone();
     let note_clone = note.clone();
-    tokio::spawn(async move {
-        let _ = indexer::index_note(&db, &note_clone.id, &note_clone.title, &note_clone.content, 
+    tauri::async_runtime::spawn(async move {
+        let _ = indexer::index_note(&db, &note_clone.id, &note_clone.title, &note_clone.content,
             &settings.ollama_base_url, settings.ollama_model.as_deref()).await;
     });
     Ok(note)

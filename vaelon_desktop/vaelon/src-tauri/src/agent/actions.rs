@@ -25,7 +25,7 @@ pub struct Action {
     pub action_type: ActionType,
     /// File path (for file operations)
     pub path: Option<String>,
-    /// File content (for WRITE_FILE)
+    /// File content (for WRITE_FILE / EDIT_FILE)
     pub content: Option<String>,
     /// Shell command (for RUN_COMMAND)
     pub command: Option<String>,
@@ -37,6 +37,10 @@ pub struct Action {
     pub url: Option<String>,
     /// Human-readable description
     pub description: String,
+    /// The planner's raw reasoning that produced this action.
+    /// Captured from the `thought` field of the planner's JSON response
+    /// and fed back into build_context() so future iterations can see it.
+    pub thought: Option<String>,
     /// How many times this action has been retried
     pub retry_count: usize,
     /// Whether this was auto-generated as a repair
@@ -55,6 +59,7 @@ impl Action {
             query: None,
             url: None,
             description: description.into(),
+            thought: None,
             retry_count: 0,
             is_repair: false,
         }
