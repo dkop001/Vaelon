@@ -139,9 +139,12 @@ impl AgentState {
             obs_lines.push(line);
         }
 
+        let workspace_tree = scan_workspace(&self.workspace_path);
+
         format!(
             "GOAL: {goal}\n\
              WORKSPACE: {workspace}\n\
+             WORKSPACE TREE:\n{tree}\n\
              FILES CREATED: {created:?}\n\
              FILES MODIFIED: {modified:?}\n\
              ERRORS: {errors:?}\n\
@@ -150,6 +153,7 @@ impl AgentState {
              RECENT OBSERVATIONS (newest first, ~{tokens} tokens):\n{obs}",
             goal      = self.goal,
             workspace = self.workspace_path,
+            tree      = workspace_tree,
             created   = self.files_created,
             modified  = self.files_modified,
             errors    = self.current_errors,
@@ -174,5 +178,47 @@ impl AgentState {
 
     pub fn can_retry(&self) -> bool {
         self.retry_count < 3
+    }
+}
+
+fn scan_workspace(workspace_path: &str) -> String {
+    let mut files = vec![];
+    let root = std::path::Path::new(workspace_path);
+    
+    fn walk(dir: &std::path::Path, prefix: &str, files: &mut Vec<String>, depth: usize) {
+        if depth > 4 { return; }
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            let mut sorted_entries: Vec<_> = entries.filter_map(Result::ok).collect();
+            sorted_entries.sort_by_key(|e| (!e.path().is_dir(), e.file_name()));
+            
+            for entry in sorted_entries {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name == "node_modules" 
+                    || name == ".git" 
+                    || name == "target" 
+                    || name == "dist" 
+                    || name == "build" 
+                    || name == "package-lock.json"
+                    || name == "tmp"
+                {
+                    continue;
+                }
+                
+                let is_dir = entry.path().is_dir();
+                if is_dir {
+                    files.push(format!("{}{}/", prefix, name));
+                    walk(&entry.path(), &format!("{}  ", prefix), files, depth + 1);
+                } else {
+                    files.push(format!("{}{}", prefix, name));
+                }
+            }
+        }
+    }
+    
+    walk(root, "", &mut files, 0);
+    if files.is_empty() {
+        "  (empty or failed to read)".to_string()
+    } else {
+        files.join("\n")
     }
 }

@@ -38,7 +38,7 @@ impl Default for LlmSettings {
             ollama_model: None,
             ollama_base_url: "http://localhost:11434".into(),
             groq_api_key: String::new(),
-            groq_model: "llama-3.1-8b-instant".into(),
+            groq_model: "llama-3.3-70b-versatile".into(),
         }
     }
 }

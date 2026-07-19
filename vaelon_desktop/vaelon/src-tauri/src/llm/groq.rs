@@ -88,13 +88,17 @@ pub async fn complete_blocking(req: &LlmRequest, settings: &LlmSettings) -> Resu
     }
 
     let client = Client::new();
-    let body = json!({
+    let mut body = json!({
         "model": settings.groq_model,
         "messages": req.messages.iter().map(|m| json!({"role": m.role, "content": m.content})).collect::<Vec<_>>(),
         "temperature": req.temperature.unwrap_or(0.3),
         "max_tokens": req.max_tokens.unwrap_or(2000),
         "stream": false,
     });
+
+    if req.json_mode {
+        body["response_format"] = json!({"type": "json_object"});
+    }
 
     #[derive(Deserialize)]
     struct Resp { choices: Vec<Choice> }
