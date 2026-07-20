@@ -40,10 +40,8 @@ const IconLogOut = () => (
     <path d="M5 2H2.5A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H5M9 4l3 3-3 3M13 7H5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-const IconNoteAI = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path d="M7 1 8.3 5H12L9 7.5l1.1 4L7 9.2 3.9 11.5 5 7.5 2 5h3.7L7 1Z" fill="currentColor"/>
-  </svg>
+const IconVaelon = () => (
+  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1 8.3 5H12L9 7.5l1.1 4L7 9.2 3.9 11.5 5 7.5 2 5h3.7L7 1Z" fill="currentColor"/></svg>
 );
 
 // ── SyncBadge ──────────────────────────────────────────────────────────────────
@@ -60,23 +58,24 @@ function SyncBadge({ state }: { state: SyncState }) {
 }
 
 // ── Breadcrumb ─────────────────────────────────────────────────────────────────
-type ActiveView = 'home' | 'notes' | 'study' | 'search' | 'settings' | 'chatHistory';
+type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'chatHistory';
 
-function Breadcrumb({ activeView, noteTitle }: { activeView: ActiveView; noteTitle?: string }) {
+function Breadcrumb({ activeView, documentTitle }: { activeView: ActiveView; documentTitle?: string }) {
   const viewLabels: Record<string, string> = {
-    home: 'Home', notes: 'Notes', study: 'Study', search: 'Search',
-    settings: 'Settings', chatHistory: 'Chat History',
+    home: 'Home', documents: 'Knowledge', projects: 'Projects', tasks: 'Tasks',
+    research: 'Research', git: 'Git', builds: 'Builds', terminal: 'Terminal',
+    search: 'Search', settings: 'Settings', chatHistory: 'Chat History',
   };
   const viewLabel = viewLabels[activeView] ?? activeView;
   return (
     <nav className="topbar-breadcrumb" aria-label="breadcrumb">
-      <span className="topbar-breadcrumb-item">Note AI</span>
+      <span className="topbar-breadcrumb-item">Vaelon</span>
       <span className="topbar-breadcrumb-sep">›</span>
-      <span className={`topbar-breadcrumb-item ${!noteTitle ? 'current' : ''}`}>{viewLabel}</span>
-      {noteTitle && (
+      <span className={`topbar-breadcrumb-item ${!documentTitle ? 'current' : ''}`}>{viewLabel}</span>
+      {documentTitle && (
         <>
           <span className="topbar-breadcrumb-sep">›</span>
-          <span className="topbar-breadcrumb-item current">{noteTitle}</span>
+          <span className="topbar-breadcrumb-item current">{documentTitle}</span>
         </>
       )}
     </nav>
@@ -85,11 +84,11 @@ function Breadcrumb({ activeView, noteTitle }: { activeView: ActiveView; noteTit
 
 // ── TopBar ─────────────────────────────────────────────────────────────────────
 interface TopBarProps {
-  noteTitle?: string;
+  documentTitle?: string;
   onSettingsOpen: () => void;
 }
 
-export default function TopBar({ noteTitle, onSettingsOpen }: TopBarProps) {
+export default function TopBar({ documentTitle, onSettingsOpen }: TopBarProps) {
   const {
     theme, toggleTheme, toggleSidebar, openCmd,
     rightPanelOpen, toggleRightPanel, syncState, activeView,
@@ -119,9 +118,9 @@ export default function TopBar({ noteTitle, onSettingsOpen }: TopBarProps) {
       {/* Logo */}
       <div className="topbar-logo">
         <div className="topbar-logo-icon" aria-hidden="true">
-          <IconNoteAI />
+          <IconVaelon />
         </div>
-        <span className="topbar-logo-text">Flow</span>
+        <span className="topbar-logo-text">Vaelon</span>
       </div>
 
       <div className="topbar-divider" aria-hidden="true" />
@@ -145,7 +144,7 @@ export default function TopBar({ noteTitle, onSettingsOpen }: TopBarProps) {
       <div className="topbar-divider" aria-hidden="true" />
 
       {/* Breadcrumb */}
-      <Breadcrumb activeView={activeView} noteTitle={noteTitle} />
+      <Breadcrumb activeView={activeView} documentTitle={documentTitle} />
 
       <div className="topbar-spacer" />
 

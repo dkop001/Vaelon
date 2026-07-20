@@ -9,11 +9,10 @@ import SettingsPanel from './components/workspace/SettingsPanel';
 import AgentMode from './features/agent/AgentMode';
 import HomeDashboard from './features/search/HomeDashboard';
 import SearchPage from './features/search/SearchPage';
-import StudyCenter from './features/study/StudyCenter';
-import NoteWorkspace from './features/editor/NoteWorkspace';
+import DocumentWorkspace from './features/editor/DocumentWorkspace';
 import { useAppStore } from './store/appStore';
 import { useWorkspaceStore } from './store/workspaceStore';
-import { useNoteStore } from './store/noteStore';
+import { useDocumentStore, DocumentType } from './store/noteStore';
 import { useChatStore } from './store/chatStore';
 import { useTerminalStore } from './store/terminalStore';
 import { useAgentStore } from './store/agentStore';
@@ -22,7 +21,7 @@ import { useAgentStore } from './store/agentStore';
 function AppContent() {
   const { activeView, setActiveView, rightPanelOpen, sidebarCollapsed, activeMode } = useAppStore();
   const { activeWorkspaceId, activeProjectId, init: initWorkspaces } = useWorkspaceStore();
-  const { notes, activeNoteId, createNote, deleteNote, selectNote } = useNoteStore();
+  const { documents, activeDocumentId, createDocument, deleteDocument, selectDocument } = useDocumentStore();
   const [showSettings, setShowSettings] = useState(false);
 
   // ── Init Workspace State on Mount ──────────────────────────────────────────
@@ -30,10 +29,10 @@ function AppContent() {
     initWorkspaces();
   }, []);
 
-  // ── Load Notes when Workspace or Project changes ──────────────────────────
+  // ── Load Documents when Workspace or Project changes ───────────────────────
   useEffect(() => {
     if (activeWorkspaceId) {
-      useNoteStore.getState().loadNotes(activeWorkspaceId, activeProjectId || undefined);
+      useDocumentStore.getState().loadDocuments(activeWorkspaceId, activeProjectId || undefined);
     }
   }, [activeWorkspaceId, activeProjectId]);
 
@@ -52,29 +51,29 @@ function AppContent() {
     }
   }, [activeWorkspaceId]);
 
-  // ── Active Note Selection Helper ──────────────────────────────────────────
-  const activeNote = notes.find((n) => n.id === activeNoteId);
+  // ── Active Document Selection Helper ───────────────────────────────────────
+  const activeDocument = documents.find((d) => d.id === activeDocumentId);
 
-  const handleCreateNote = async () => {
+  const handleCreateDocument = async (type: DocumentType = 'knowledge') => {
     if (activeWorkspaceId && activeProjectId) {
-      await createNote(activeWorkspaceId, activeProjectId, 'Untitled Note');
-      setActiveView('notes');
+      await createDocument(activeWorkspaceId, activeProjectId, 'Untitled Document', type);
+      setActiveView('documents');
     }
   };
 
-  const handleSelectNote = (id: string) => {
-    selectNote(id);
-    setActiveView('notes');
+  const handleSelectDocument = (id: string) => {
+    selectDocument(id);
+    setActiveView('documents');
   };
 
-  const handleDeleteNote = async (id: string) => {
-    await deleteNote(id);
-    if (activeNoteId === id) {
-      const remaining = notes.filter((n) => n.id !== id);
+  const handleDeleteDocument = async (id: string) => {
+    await deleteDocument(id);
+    if (activeDocumentId === id) {
+      const remaining = documents.filter((d) => d.id !== id);
       if (remaining.length > 0) {
-        selectNote(remaining[0].id);
+        selectDocument(remaining[0].id);
       } else {
-        selectNote(null);
+        selectDocument(null);
         setActiveView('home');
       }
     }
@@ -85,17 +84,17 @@ function AppContent() {
       
       {/* ── Top Bar ── */}
       <div className="workspace-topbar">
-        <TopBar noteTitle={activeNote?.title} onSettingsOpen={() => setShowSettings(true)} />
+        <TopBar documentTitle={activeDocument?.title} onSettingsOpen={() => setShowSettings(true)} />
       </div>
 
       {/* ── Sidebar (Knowledge Mode Only) ── */}
       {activeMode !== 'agent' && (
         <div className="workspace-sidebar">
           <Sidebar
-            onNewNote={handleCreateNote}
-            onDeleteNote={handleDeleteNote}
-            onSelectNote={handleSelectNote}
-            loadingNotes={false}
+            onNewDocument={handleCreateDocument}
+            onDeleteDocument={handleDeleteDocument}
+            onSelectDocument={handleSelectDocument}
+            loadingDocuments={false}
           />
         </div>
       )}
@@ -107,21 +106,41 @@ function AppContent() {
         ) : (
           <>
             {activeView === 'home' && (
-              <HomeDashboard onNewNote={handleCreateNote} />
+              <HomeDashboard onNewNote={handleCreateDocument} />
             )}
 
-            {activeView === 'notes' && (
-              <NoteWorkspace
+            {activeView === 'documents' && (
+              <DocumentWorkspace
                 onStatsChange={() => {}}
               />
             )}
 
-            {activeView === 'study' && (
-              <StudyCenter />
-            )}
-
             {activeView === 'search' && (
               <SearchPage />
+            )}
+
+            {activeView === 'projects' && (
+              <div className="page-placeholder">Projects View - Coming Soon</div>
+            )}
+
+            {activeView === 'tasks' && (
+              <div className="page-placeholder">Tasks View - Coming Soon</div>
+            )}
+
+            {activeView === 'research' && (
+              <div className="page-placeholder">Research View - Coming Soon</div>
+            )}
+
+            {activeView === 'git' && (
+              <div className="page-placeholder">Git View - Coming Soon</div>
+            )}
+
+            {activeView === 'builds' && (
+              <div className="page-placeholder">Builds View - Coming Soon</div>
+            )}
+
+            {activeView === 'terminal' && (
+              <div className="page-placeholder">Terminal View - Coming Soon</div>
             )}
           </>
         )}
@@ -136,15 +155,15 @@ function AppContent() {
 
           <div className="workspace-statusbar">
             <StatusBar
-              wordCount={activeNote?.content ? activeNote.content.split(/\s+/).filter(Boolean).length : 0}
-              charCount={activeNote?.content ? activeNote.content.length : 0}
+              wordCount={activeDocument?.content ? activeDocument.content.split(/\s+/).filter(Boolean).length : 0}
+              charCount={activeDocument?.content ? activeDocument.content.length : 0}
             />
           </div>
         </>
       )}
 
       {/* ── Command Palette ── */}
-      <CommandPalette onNewNote={handleCreateNote} />
+      <CommandPalette onNewDocument={handleCreateDocument} />
 
       {/* ── Settings Panel Modal ── */}
       {showSettings && (

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNoteStore } from '../../store/noteStore';
+import { useDocumentStore, Document } from '../../store/noteStore';
 import { useAppStore } from '../../store/appStore';
-import { Note } from '../../ipc/client';
 
 const IconSearch = () => (
   <svg width="18" height="18" viewBox="0 0 15 15" fill="none">
@@ -9,7 +8,7 @@ const IconSearch = () => (
     <path d="m10 10 3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
   </svg>
 );
-const IconNote = () => (
+const IconDocument = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
     <rect x="1.5" y="1.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.2"/>
     <path d="M4 5h6M4 7h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
@@ -57,13 +56,13 @@ function escapeRegex(str: string): string {
 }
 
 interface ResultItemProps {
-  note: Note;
+  document: Document;
   query: string;
   onOpen: (id: string) => void;
 }
 
-function ResultItem({ note, query, onOpen }: ResultItemProps) {
-  const plainText = stripHtml(note.content || '');
+function ResultItem({ document, query, onOpen }: ResultItemProps) {
+  const plainText = stripHtml(document.content || '');
   const idx = plainText.toLowerCase().indexOf(query.toLowerCase());
   let preview = '';
   if (idx !== -1) {
@@ -75,14 +74,14 @@ function ResultItem({ note, query, onOpen }: ResultItemProps) {
   }
 
   return (
-    <div className="search-result-item" onClick={() => onOpen(note.id)}>
-      <div className="search-result-icon"><IconNote /></div>
+    <div className="search-result-item" onClick={() => onOpen(document.id)}>
+      <div className="search-result-icon"><IconDocument /></div>
       <div className="search-result-body">
-        <div className="search-result-title" dangerouslySetInnerHTML={{ __html: highlight(note.title || 'Untitled', query) }} />
+        <div className="search-result-title" dangerouslySetInnerHTML={{ __html: highlight(document.title || 'Untitled', query) }} />
         <div className="search-result-preview" dangerouslySetInnerHTML={{ __html: highlight(preview, query) }} />
         <div className="search-result-meta">
-          <IconClock /> {timeAgo(note.updated_at)}
-          {note.pinned ? <span className="search-result-pin">Pinned</span> : null}
+          <IconClock /> {timeAgo(document.updated_at)}
+          {document.pinned ? <span className="search-result-pin">Pinned</span> : null}
         </div>
       </div>
     </div>
@@ -90,7 +89,7 @@ function ResultItem({ note, query, onOpen }: ResultItemProps) {
 }
 
 export default function SearchPage() {
-  const { notes, setActiveNote } = useNoteStore();
+  const { documents, selectDocument } = useDocumentStore();
   const { setActiveView } = useAppStore();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -100,23 +99,23 @@ export default function SearchPage() {
   }, []);
 
   const results = query.trim()
-    ? notes.filter(n => {
+    ? documents.filter(d => {
         const q = query.toLowerCase();
-        const title = (n.title || '').toLowerCase();
-        const content = stripHtml(n.content || '').toLowerCase();
+        const title = (d.title || '').toLowerCase();
+        const content = stripHtml(d.content || '').toLowerCase();
         return title.includes(q) || content.includes(q);
       }).sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())
-    : notes.slice(0, 20).sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
+    : documents.slice(0, 20).sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
 
-  const openNote = (id: string) => {
-    setActiveNote(id);
-    setActiveView('notes');
+  const openDocument = (id: string) => {
+    selectDocument(id);
+    setActiveView('documents');
   };
 
   return (
     <div className="search-page animate-fade-in">
       <div className="search-page-header">
-        <h1 className="search-page-title">Search Notes</h1>
+        <h1 className="search-page-title">Search Documents</h1>
         <p className="search-page-sub">Find anything in your workspace</p>
       </div>
 
@@ -129,7 +128,7 @@ export default function SearchPage() {
           placeholder="Search by title or content..."
           value={query}
           onChange={e => setQuery(e.target.value)}
-          aria-label="Search notes"
+          aria-label="Search documents"
         />
         {query && (
           <button className="btn btn-icon-sm btn-ghost" onClick={() => setQuery('')}>
@@ -144,7 +143,7 @@ export default function SearchPage() {
             <div className="search-empty-icon"><IconSearch /></div>
             <div className="search-empty-title">No results found</div>
             <div className="search-empty-desc">
-              {query ? `No notes match "${query}". Try a different search term.` : 'Create some notes to see them here.'}
+              {query ? `No documents match "${query}". Try a different search term.` : 'Create some documents to see them here.'}
             </div>
           </div>
         ) : (
@@ -153,8 +152,8 @@ export default function SearchPage() {
               {results.length} result{results.length !== 1 ? 's' : ''}
               {query ? ` for "${query}"` : ''}
             </div>
-            {results.map(note => (
-              <ResultItem key={note.id} note={note} query={query} onOpen={openNote} />
+            {results.map(doc => (
+              <ResultItem key={doc.id} document={doc} query={query} onOpen={openDocument} />
             ))}
           </>
         )}

@@ -28,12 +28,6 @@ const Ico = {
       <path d="M4 4.5h6M4 7h6M4 9.5h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
     </svg>
   ),
-  quiz: () => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M7 1.5 13 4.5 7 7.5 1 4.5l6-3Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-      <path d="M3.5 5.5v4a5 5 0 0 0 7 0v-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-    </svg>
-  ),
   copy: () => (
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
       <rect x="4.5" y="4.5" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
@@ -115,7 +109,7 @@ export default function AIPanel() {
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<MsgItem[]>([
-    { role: 'ai', text: "Hi! I'm your Note AI assistant. Select a note and ask me to summarize it, generate a quiz, or ask any question about your knowledge." }
+    { role: 'ai', text: "Hi! I'm your AI assistant. Select a document and ask me to summarize it, or ask any question about your project." }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -132,11 +126,11 @@ export default function AIPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // Reset on note change
+  // Reset on document change
   useEffect(() => {
     setSummary(null);
     setChatMessages([
-      { role: 'ai', text: "Hi! I'm your Note AI assistant. Select a note and ask me to summarize it, generate a quiz, or ask any question about your knowledge." }
+      { role: 'ai', text: "Hi! I'm your AI assistant. Select a document and ask me to summarize it, or ask any question about your project." }
     ]);
   }, [activeNoteId]);
 
@@ -203,7 +197,7 @@ export default function AIPanel() {
     try {
       const plainText = activeNote.content.replace(/<[^>]*>/g, '').trim();
       const messages = [
-        { role: 'system', content: 'You are a concise AI assistant. Summarize the provided note clearly and briefly.' },
+        { role: 'system', content: 'You are a concise AI assistant. Summarize the provided document clearly and briefly.' },
         { role: 'user', content: plainText },
       ];
       const result = await api.llmComplete(messages, 0.3, 512);
@@ -224,10 +218,9 @@ export default function AIPanel() {
     } catch { /* noop */ }
   };
 
-  const TABS: { id: 'chat' | 'summary' | 'quiz'; label: string }[] = [
+  const TABS: { id: 'chat' | 'summary'; label: string }[] = [
     { id: 'chat', label: 'Chat' },
     { id: 'summary', label: 'Summary' },
-    { id: 'quiz', label: 'Quiz' },
   ];
 
   return (
@@ -238,7 +231,7 @@ export default function AIPanel() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="ai-panel-title">AI Assistant</div>
           <div className="ai-panel-subtitle">
-            {activeNote ? `Context: ${activeNote.title?.slice(0, 24) || 'Untitled'}` : 'Select a note to begin'}
+            {activeNote ? `Context: ${activeNote.title?.slice(0, 24) || 'Untitled'}` : 'Select a document to begin'}
           </div>
         </div>
         <button className="btn btn-icon-sm btn-ghost" onClick={toggleRightPanel} aria-label="Close AI panel" id="ai-panel-close">
@@ -275,7 +268,7 @@ export default function AIPanel() {
           {/* Suggested prompts */}
           {chatMessages.length === 1 && activeNote && (
             <div style={{ padding: '0 var(--sp-5) var(--sp-4)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {['Summarize this note briefly', 'What are the key takeaways?', 'Generate 3 quiz questions'].map(prompt => (
+              {['Summarize this document briefly', 'What are the key takeaways?', 'Explain the architecture'].map(prompt => (
                 <button
                   key={prompt}
                   onClick={() => { setChatInput(prompt); chatInputRef.current?.focus(); }}
@@ -296,7 +289,7 @@ export default function AIPanel() {
             <textarea
               ref={chatInputRef}
               className="chat-input"
-              placeholder={activeNote ? 'Ask about your note…' : 'Select a note first…'}
+              placeholder={activeNote ? 'Ask about your document…' : 'Select a document first…'}
               value={chatInput}
               onChange={handleInputChange}
               onKeyDown={handleChatKey}
@@ -329,14 +322,14 @@ export default function AIPanel() {
             id="ai-summarize-btn"
           >
             <span className="btn-icon"><Ico.summarize /></span>
-            {summaryLoading ? 'Summarizing…' : summary ? 'Re-summarize' : 'Summarize Note'}
+            {summaryLoading ? 'Summarizing…' : summary ? 'Re-summarize' : 'Summarize Document'}
             {summaryLoading && <Ico.spinner />}
           </button>
 
           {!activeNote && (
             <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--tx-tertiary)', fontSize: 'var(--text-sm)' }}>
               <div style={{ fontSize: 28, marginBottom: 8, opacity: .4 }}>✦</div>
-              Select or create a note to summarize it.
+              Select or create a document to summarize it.
             </div>
           )}
 
@@ -358,47 +351,6 @@ export default function AIPanel() {
                 </button>
               </div>
               <div className="summary-body">{summary}</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Quiz Tab ── */}
-      {rightPanelTab === 'quiz' && (
-        <div className="ai-panel-body">
-          <div style={{
-            background: 'linear-gradient(135deg, var(--accent-muted), hsla(296,80%,60%,.08))',
-            border: '1px solid var(--accent-border)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '20px 16px', textAlign: 'center', marginBottom: 16,
-          }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>🎓</div>
-            <div style={{ fontSize: 'var(--text-md)', fontWeight: 700, color: 'var(--tx-primary)', marginBottom: 4 }}>
-              Study Quiz Generator
-            </div>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--tx-secondary)', lineHeight: 1.6 }}>
-              Generate multiple-choice questions from your active note.
-            </div>
-          </div>
-
-          <button
-            className="ai-action-btn"
-            disabled={!activeNote?.content?.trim()}
-            id="ai-quiz-launch-btn"
-            onClick={() => {
-              // Future: integrate quiz generation via Rust LLM
-              setChatInput('Generate 5 multiple-choice quiz questions from this note.');
-              setRightPanelTab('chat');
-            }}
-          >
-            <span className="btn-icon"><Ico.quiz /></span>
-            Generate Quiz from Note
-          </button>
-
-          {activeNote && (
-            <div style={{ marginTop: 12, padding: '10px 14px', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', fontSize: 'var(--text-xs)', color: 'var(--tx-tertiary)', lineHeight: 1.6 }}>
-              <strong style={{ color: 'var(--tx-secondary)' }}>Active note:</strong>{' '}
-              {activeNote.title || 'Untitled'} · {(activeNote.content?.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(Boolean).length) || 0} words
             </div>
           )}
         </div>

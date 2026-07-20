@@ -13,10 +13,14 @@ interface WorkspaceState {
   selectWorkspace: (id: string) => Promise<void>;
   createWorkspace: (name: string, path: string) => Promise<void>;
   deleteWorkspace: (id: string) => Promise<void>;
+  updateWorkspace: (id: string, updates: Partial<Workspace>) => Promise<void>;
 
   selectProject: (id: string) => void;
-  createProject: (name: string) => Promise<void>;
+  createProject: (name: string, description?: string) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
+  updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
+  getActiveProject: () => Project | null;
+  getActiveWorkspace: () => Workspace | null;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
@@ -33,7 +37,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       const list = await api.workspaceList();
       set({ workspaces: list, loading: false });
       if (list.length > 0) {
-        // Auto-select first workspace (usually 'default')
         const defaultWs = list.find((w) => w.id === 'default') || list[0];
         await get().selectWorkspace(defaultWs.id);
       }
@@ -88,18 +91,30 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
   },
 
+  updateWorkspace: async (id: string, updates: Partial<Workspace>) => {
+    const ws = get().workspaces.find(w => w.id === id);
+    if (!ws) return;
+    const updated = { ...ws, ...updates, updated_at: new Date().toISOString() };
+    // Backend doesn't have update command yet, store locally
+    set({ workspaces: get().workspaces.map(w => w.id === id ? updated : w) });
+  },
+
   selectProject: (id: string) => {
     set({ activeProjectId: id });
   },
 
-  createProject: async (name: string) => {
+  createProject: async (name: string, description?: string) => {
     const wsId = get().activeWorkspaceId;
     if (!wsId) return;
     set({ loading: true, error: null });
     try {
-      await api.projectCreate(wsId, name);
+      const project = await api.projectCreate(wsId, name);
+      if (description) {
+        // Update description locally since backend doesn't support it yet
+        project.description = description;
+      }
       const pList = await api.projectList(wsId);
-      set({ projects: pList, loading: false });
+      set({ projects: pList, loading: false, activeProjectId: project.id });
     } catch (err: any) {
       set({ error: err.toString(), loading: false });
     }
@@ -124,5 +139,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } catch (err: any) {
       set({ error: err.toString(), loading: false });
     }
+  },
+
+  updateProject: async (id: string, updates: Partial<Project>) => {
+    const project = get().projects.find(p => p.id === id);
+    if (!project) return;
+    const updated = { ...project, ...updates, updated_at: new Date().toISOString() };
+    set({ projects: get().projects.map(p => p.id === id ? updated : p) });
+    if (get().activeProjectId === id) {
+      set({ activeProjectId: updated.id });
+    }
+  },
+
+  getActiveProject: () => {
+    const { projects, activeProjectId } = get();
+    return projects.find(p => p.id === activeProjectId) || null;
+  },
+
+  getActiveWorkspace: () => {
+    const { workspaces, activeWorkspaceId } = get();
+    return workspaces.find(w => w.id === activeWorkspaceId) || null;
   },
 }));

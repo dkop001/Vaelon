@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppStore } from '../../store/appStore';
-import { useNoteStore } from '../../store/noteStore';
-import { Note } from '../../ipc/client';
+import { useDocumentStore, Document } from '../../store/noteStore';
+import { DocumentType } from '../../store/noteStore';
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const IconPlus = () => (
@@ -20,21 +20,16 @@ const IconAI = () => (
     <path d="M7 1 8.3 5H12L9 7.5l1.1 4L7 9.2 3.9 11.5 5 7.5 2 5h3.7L7 1Z" fill="currentColor"/>
   </svg>
 );
-const IconNote = () => (
+const IconDocument = () => (
   <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
     <rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
     <path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
   </svg>
 );
-const IconStudy = () => (
+const IconResearch = () => (
   <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
     <path d="M7 1.5 13 4.5 7 7.5 1 4.5l6-3Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
     <path d="M3.5 5.5v4a5 5 0 0 0 7 0v-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-  </svg>
-);
-const IconCmd = () => (
-  <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-    <path d="M5 3a2 2 0 1 0-2 2h2V3ZM5 3v8M9 11a2 2 0 1 0 2-2H9v2ZM9 11V3M3 9a2 2 0 1 0 2 2V9H3ZM11 5a2 2 0 1 0-2-2v2h2Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 const IconClock = () => (
@@ -43,9 +38,10 @@ const IconClock = () => (
     <path d="M6.5 4v2.5l1.5 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
   </svg>
 );
-const IconArrow = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-    <path d="M2.5 6h7M6 3l3 3-3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+const IconTerminal = () => (
+  <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+    <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+    <path d="M3.5 5L6 7 3.5 9M7 9h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -87,34 +83,34 @@ function StatCard({ icon: Icon, value, label, colorClass, onClick }: StatCardPro
   );
 }
 
-// ── Note Card ─────────────────────────────────────────────────────────────────
-interface NoteCardProps {
-  note: Note;
+// ── Document Card ──────────────────────────────────────────────────────────────
+interface DocumentCardProps {
+  document: Document;
   onOpen: (id: string) => void;
 }
 
-function NoteCard({ note, onOpen }: NoteCardProps) {
-  const plainText = note.content?.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() || '';
+function DocumentCard({ document, onOpen }: DocumentCardProps) {
+  const plainText = document.content?.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() || '';
   return (
-    <div className="note-card card-hoverable" onClick={() => onOpen(note.id)}>
+    <div className="note-card card-hoverable" onClick={() => onOpen(document.id)}>
       <div className="note-card-icon">
-        <IconNote />
+        <IconDocument />
       </div>
-      <div className="note-card-title">{note.title?.trim() || 'Untitled'}</div>
+      <div className="note-card-title">{document.title?.trim() || 'Untitled'}</div>
       <div className="note-card-preview">
         {plainText || <span style={{ fontStyle: 'italic', opacity: .6 }}>No content yet</span>}
       </div>
-      {note.updated_at && (
+      {document.updated_at && (
         <div className="note-card-meta">
           <IconClock />
-          {timeAgo(note.updated_at)}
+          {timeAgo(document.updated_at)}
         </div>
       )}
     </div>
   );
 }
 
-// ── Quick Action ──────────────────────────────────────────────────────────────
+// ── Quick Action ───────────────────────────────────────────────────────────────
 interface QuickActionProps {
   icon: React.ComponentType;
   label: string;
@@ -138,20 +134,20 @@ function QuickAction({ icon: Icon, label, sub, bg, color, onClick }: QuickAction
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
+// ── Main Component ──────────────────────────────────────────────────────────────
 interface HomeDashboardProps {
-  onNewNote: () => void;
+  onNewNote: (type?: DocumentType) => void;
 }
 
 export default function HomeDashboard({ onNewNote }: HomeDashboardProps) {
   const { setActiveView, openCmd, openRightPanel } = useAppStore();
-  const { notes } = useNoteStore();
+  const { documents } = useDocumentStore();
 
-  const recentNotes = notes.slice(0, 6);
+  const recentDocuments = documents.slice(0, 6);
 
-  const openNote = (id: string) => {
-    useNoteStore.getState().setActiveNote(id);
-    setActiveView('notes');
+  const openDocument = (id: string) => {
+    useDocumentStore.getState().selectDocument(id);
+    setActiveView('documents');
   };
 
   return (
@@ -161,7 +157,7 @@ export default function HomeDashboard({ onNewNote }: HomeDashboardProps) {
       <section className="home-greeting">
         <div className="home-greeting-eyebrow">
           <IconAI />
-          AI-native knowledge workspace
+          AI-native developer workspace
         </div>
 
         <h1 className="home-greeting-title">
@@ -170,17 +166,17 @@ export default function HomeDashboard({ onNewNote }: HomeDashboardProps) {
         </h1>
 
         <p className="home-greeting-sub">
-          Capture ideas, generate AI summaries, quiz yourself, and connect knowledge — all in one place.
+          Research, plan, code, debug, document, and ship — all in one context-aware environment.
         </p>
 
         <div className="home-ctas">
           <button
             className="btn btn-primary btn-lg"
-            onClick={() => { onNewNote(); }}
+            onClick={() => { onNewNote('knowledge'); }}
             id="home-create-note"
           >
             <IconPlus />
-            New Note
+            New Document
           </button>
           <button
             className="btn btn-secondary btn-lg"
@@ -188,7 +184,7 @@ export default function HomeDashboard({ onNewNote }: HomeDashboardProps) {
             id="home-search-cmd"
           >
             <IconSearch />
-            Search &amp; Commands
+            Search & Commands
             <span style={{
               marginLeft: 4, fontSize: '10px', fontFamily: 'var(--font-mono)',
               color: 'var(--tx-disabled)',
@@ -202,18 +198,18 @@ export default function HomeDashboard({ onNewNote }: HomeDashboardProps) {
       {/* ── Stats strip ── */}
       <div className="home-stats">
         <StatCard
-          icon={IconNote}
-          value={notes.length}
-          label="Notes created"
+          icon={IconDocument}
+          value={documents.length}
+          label="Documents created"
           colorClass="purple"
-          onClick={() => setActiveView('notes')}
+          onClick={() => setActiveView('documents')}
         />
         <StatCard
-          icon={IconStudy}
-          value={notes.filter(n => (n.content || '').length > 50).length}
-          label="Ready for study"
+          icon={IconResearch}
+          value={documents.filter(d => d.type === 'research').length}
+          label="Research entries"
           colorClass="pink"
-          onClick={() => setActiveView('study')}
+          onClick={() => setActiveView('research')}
         />
         <StatCard
           icon={IconAI}
@@ -221,6 +217,13 @@ export default function HomeDashboard({ onNewNote }: HomeDashboardProps) {
           label="AI sessions available"
           colorClass="rose"
           onClick={() => openRightPanel('chat')}
+        />
+        <StatCard
+          icon={IconTerminal}
+          value="Ready"
+          label="Terminal integration"
+          colorClass="green"
+          onClick={() => setActiveView('terminal')}
         />
       </div>
 
@@ -231,86 +234,63 @@ export default function HomeDashboard({ onNewNote }: HomeDashboardProps) {
         </div>
         <div className="quick-actions-grid">
           <QuickAction
-            icon={IconNote}
-            label="New Note"
-            sub="Blank canvas"
+            icon={IconDocument}
+            label="New Knowledge Doc"
+            sub="Architecture, decisions, notes"
             bg="hsla(258,88%,68%,.13)"
             color="var(--accent)"
-            onClick={() => onNewNote()}
+            onClick={() => onNewNote('knowledge')}
+          />
+          <QuickAction
+            icon={IconResearch}
+            label="New Research Doc"
+            sub="Sources, comparisons, findings"
+            bg="hsla(340,85%,65%,.13)"
+            color="var(--accent-3)"
+            onClick={() => onNewNote('research')}
           />
           <QuickAction
             icon={IconAI}
             label="AI Chat"
-            sub="Ask anything"
+            sub="Ask about your project"
             bg="hsla(296,80%,62%,.13)"
             color="var(--accent-2)"
             onClick={() => openRightPanel('chat')}
           />
           <QuickAction
-            icon={IconStudy}
-            label="Study Center"
-            sub="Quizzes & review"
-            bg="hsla(340,85%,65%,.13)"
-            color="var(--accent-3)"
-            onClick={() => setActiveView('study')}
-          />
-          <QuickAction
-            icon={IconCmd}
-            label="Commands"
-            sub="⌘K to open"
+            icon={IconTerminal}
+            label="Terminal"
+            sub="Integrated shell"
             bg="hsla(152,68%,50%,.13)"
             color="var(--success)"
-            onClick={openCmd}
+            onClick={() => setActiveView('terminal')}
           />
         </div>
       </section>
 
-      {/* ── Recent notes ── */}
+      {/* ── Recent documents ── */}
       <section>
         <div className="recent-section-header">
-          <h2 className="recent-section-title">Recent notes</h2>
-          {notes.length > 0 && (
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => setActiveView('notes')}
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}
-            >
-              View all <IconArrow />
-            </button>
-          )}
+          <h2 className="recent-section-title">Recent documents</h2>
         </div>
-
-        {notes.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">
-              <IconNote />
+        {recentDocuments.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 'var(--sp-12)', color: 'var(--tx-tertiary)' }}>
+            <div style={{ fontSize: 32, marginBottom: 'var(--sp-4)', opacity: .4 }}>
+              <IconDocument />
             </div>
-            <div className="empty-state-title">No notes yet</div>
-            <div className="empty-state-desc">
-              Create your first note to get started. Use the AI assistant to summarize, quiz yourself, or ask questions.
+            <div style={{ fontSize: 'var(--text-md)', fontWeight: 600, marginBottom: 4 }}>No documents yet</div>
+            <div style={{ fontSize: 'var(--text-sm)', maxWidth: 300, margin: '0 auto' }}>
+              Create your first document to get started.
             </div>
-            <button className="btn btn-primary" onClick={() => onNewNote()} id="empty-create-note">
-              <IconPlus /> Create your first note
-            </button>
           </div>
         ) : (
-          <div className="recent-notes-grid">
-            {recentNotes.map((note) => (
-              <NoteCard key={note.id} note={note} onOpen={openNote} />
+          <div className="note-grid">
+            {recentDocuments.map(doc => (
+              <DocumentCard key={doc.id} document={doc} onOpen={openDocument} />
             ))}
           </div>
         )}
       </section>
-
-      {/* ── Feature badges ── */}
-      <section style={{ marginTop: 'var(--sp-16)', paddingTop: 'var(--sp-8)', borderTop: '1px solid var(--border-subtle)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--sp-3)' }}>
-          {['✦ AI Summaries', '✓ Rich Text Editor', '⚡ PDF & File Support', '🔒 Secure & Private', '🎓 Self-Study Quizzes'].map(f => (
-            <span key={f} className="hero-pill">{f}</span>
-          ))}
-        </div>
-      </section>
-
     </div>
   );
 }
