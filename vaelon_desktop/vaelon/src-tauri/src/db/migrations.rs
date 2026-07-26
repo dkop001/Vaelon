@@ -199,6 +199,36 @@ CREATE TABLE IF NOT EXISTS embeddings (
 );
 CREATE INDEX IF NOT EXISTS idx_embeddings_note ON embeddings(note_id);
 
+-- ── Event Store (Event Sourcing) ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS event_store (
+    id           TEXT PRIMARY KEY,
+    run_id       TEXT NOT NULL DEFAULT '',
+    event_type   TEXT NOT NULL,
+    event_json   TEXT NOT NULL,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_event_store_run ON event_store(run_id);
+CREATE INDEX IF NOT EXISTS idx_event_store_type ON event_store(event_type);
+
+-- ── File Index ──────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS file_index (
+    id           TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL DEFAULT 'default',
+    path         TEXT NOT NULL,
+    hash         TEXT NOT NULL DEFAULT '',
+    symbols      TEXT NOT NULL DEFAULT '[]',
+    imports      TEXT NOT NULL DEFAULT '[]',
+    functions    TEXT NOT NULL DEFAULT '[]',
+    summary      TEXT NOT NULL DEFAULT '',
+    last_modified TEXT NOT NULL DEFAULT '',
+    size         INTEGER NOT NULL DEFAULT 0,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(workspace_id, path)
+);
+CREATE INDEX IF NOT EXISTS idx_file_index_workspace ON file_index(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_file_index_path ON file_index(path);
+
 -- ── App Config ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS app_config (
     key        TEXT PRIMARY KEY,

@@ -2,62 +2,17 @@ import { useState, useRef, useCallback } from 'react';
 import { useAgentStore, AgentTask, AgentObservation } from '../../store/agentStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useNoteStore } from '../../store/noteStore';
+import { Icons } from '../../lib/icons';
 import TerminalPanel from './TerminalPanel';
-
-// ── Icons ─────────────────────────────────────────────────────────────────────
-const Ico = {
-  send: () => (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M14 1.5 1.5 7l5.5 1.5M14 1.5 9.5 14.5l-2.5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-  stop: () => (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-    </svg>
-  ),
-  spinner: () => (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ animation: 'spin 1s linear infinite' }}>
-      <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="22 12" strokeLinecap="round"/>
-    </svg>
-  ),
-  check: () => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M2 7l4 4 6-8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-  fail: () => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M3 3l8 8M11 3 3 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  ),
-  run: () => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <path d="M3.5 2.5l8 5-8 5V2.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-    </svg>
-  ),
-  block: () => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
-      <path d="M7 4v4M7 9.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-    </svg>
-  ),
-  terminal: () => (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
-      <path d="M3.5 5L6 7 3.5 9M7 9h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
-};
 
 // ── Status badge ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: AgentTask['status'] }) {
   const cfg = {
     pending:   { color: 'var(--tx-tertiary)', icon: <span>·</span> },
-    running:   { color: 'var(--accent)',       icon: <Ico.spinner /> },
-    completed: { color: 'var(--success)',      icon: <Ico.check /> },
-    failed:    { color: 'var(--danger)',       icon: <Ico.fail /> },
-    blocked:   { color: 'var(--warning)',      icon: <Ico.block /> },
+    running:   { color: 'var(--accent)',       icon: <Icons.Spinner className="animate-spin" /> },
+    completed: { color: 'var(--success)',      icon: <Icons.Check /> },
+    failed:    { color: 'var(--danger)',       icon: <Icons.Close /> },
+    blocked:   { color: 'var(--warning)',      icon: <Icons.Alert /> },
   };
   const { color, icon } = cfg[status];
   return (
@@ -79,7 +34,7 @@ function TaskList({ tasks }: { tasks: AgentTask[] }) {
             <div className="agent-task-desc">{task.description}</div>
             {task.command && (
               <div className="agent-task-cmd">
-                <Ico.terminal /> <code>{task.command}</code>
+                <Icons.Terminal /> <code>{task.command}</code>
               </div>
             )}
           </div>
@@ -96,7 +51,7 @@ function ObservationLog({ observations }: { observations: AgentObservation[] }) 
     <div className="agent-obs-list">
       {observations.slice(-5).map((obs, i) => (
         <div key={i} className={`agent-obs-item ${obs.success ? 'success' : 'fail'}`}>
-          {obs.success ? <Ico.check /> : <Ico.fail />}
+          {obs.success ? <Icons.Check /> : <Icons.Close />}
           <span className="agent-obs-text">{obs.text}</span>
           <span className="agent-obs-time">{obs.timestamp}</span>
         </div>
@@ -187,7 +142,7 @@ export default function AgentMode() {
             )}
             {(isRunning || isBlocked) && (
               <button className="agent-cmd-stop" onClick={handleStop}>
-                <Ico.stop /> Stop
+                <Icons.Stop /> Stop
               </button>
             )}
           </div>
@@ -197,7 +152,7 @@ export default function AgentMode() {
         <div className="agent-tab-bar">
           <button className={`agent-tab ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Tasks</button>
           <button className={`agent-tab ${activeTab === 'terminal' ? 'active' : ''}`} onClick={() => setActiveTab('terminal')}>
-            <Ico.terminal /> Terminal
+            <Icons.Terminal /> Terminal
           </button>
         </div>
 
@@ -223,7 +178,7 @@ export default function AgentMode() {
 
               {status === 'planning' && (
                 <div className="agent-status-row">
-                  <Ico.spinner /> <span>Planning…</span>
+                  <Icons.Spinner className="animate-spin" /> <span>Planning…</span>
                 </div>
               )}
 
@@ -234,7 +189,7 @@ export default function AgentMode() {
               {isBlocked && blockedReason && (
                 <div className="agent-blocked-card">
                   <div className="agent-blocked-header">
-                    <Ico.block /> Approval Required
+                    <Icons.Alert /> Approval Required
                   </div>
                   <div className="agent-blocked-reason">{blockedReason}</div>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -295,202 +250,12 @@ export default function AgentMode() {
             disabled={!isRunning && !input.trim()}
             aria-label={isRunning ? 'Stop agent' : 'Start agent'}
           >
-            {isRunning ? <Ico.stop /> : <Ico.send />}
+            {isRunning ? <Icons.Stop /> : <Icons.Send />}
           </button>
         </div>
       </div>
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        .agent-mode-shell {
-          display: flex; height: 100%; width: 100%; overflow: hidden;
-          background: var(--bg-base);
-        }
-
-        .agent-left-panel {
-          display: flex; flex-direction: column; flex: 1; height: 100%;
-          border-right: 1px solid var(--border);
-          min-width: 0;
-        }
-
-        .agent-panel-header {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 12px 16px;
-          border-bottom: 1px solid var(--border);
-          background: var(--bg-secondary);
-          flex-shrink: 0;
-        }
-        .agent-panel-title { font-weight: 700; font-size: 0.875rem; color: var(--tx-primary); }
-        .agent-goal-label {
-          font-size: 0.75rem; color: var(--tx-tertiary);
-          background: var(--bg-elevated); border: 1px solid var(--border-subtle);
-          padding: 2px 8px; border-radius: 10px; max-width: 200px;
-          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-
-        .agent-status-dot {
-          width: 8px; height: 8px; border-radius: 50%;
-          background: var(--tx-disabled);
-        }
-        .agent-status-dot.running { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 1.5s ease-in-out infinite; }
-        .agent-status-dot.planning { background: var(--warning); animation: pulse 1.5s ease-in-out infinite; }
-        .agent-status-dot.completed { background: var(--success); }
-        .agent-status-dot.failed { background: var(--danger); }
-        .agent-status-dot.blocked { background: var(--warning); }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-        .agent-tab-bar {
-          display: flex; border-bottom: 1px solid var(--border);
-          background: var(--bg-secondary); flex-shrink: 0;
-        }
-        .agent-tab {
-          display: flex; align-items: center; gap: 5px;
-          padding: 8px 16px; font-size: 0.8125rem; font-weight: 500;
-          color: var(--tx-tertiary); cursor: pointer;
-          border: none; background: transparent;
-          border-bottom: 2px solid transparent; transition: all 0.15s;
-        }
-        .agent-tab:hover { color: var(--tx-primary); }
-        .agent-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-        .agent-panel-body {
-          flex: 1; overflow-y: auto; padding: 16px;
-          display: flex; flex-direction: column; gap: 12px;
-        }
-
-        .agent-empty {
-          display: flex; flex-direction: column; align-items: center;
-          text-align: center; padding: 40px 24px; gap: 8px;
-        }
-        .agent-empty-icon { font-size: 32px; margin-bottom: 8px; }
-        .agent-empty-title { font-size: 1rem; font-weight: 700; color: var(--tx-primary); }
-        .agent-empty-desc { font-size: 0.8125rem; color: var(--tx-tertiary); line-height: 1.6; max-width: 280px; }
-        .agent-context-badge {
-          font-size: 0.75rem; color: var(--accent);
-          background: var(--accent-muted); border: 1px solid var(--accent-border);
-          padding: 4px 12px; border-radius: 20px; margin-top: 8px;
-        }
-
-        .agent-status-row {
-          display: flex; align-items: center; gap: 8px;
-          color: var(--tx-secondary); font-size: 0.875rem;
-          padding: 8px 12px;
-          background: var(--bg-elevated); border-radius: 8px;
-          border: 1px solid var(--border-subtle);
-        }
-
-        .agent-task-list { display: flex; flex-direction: column; gap: 6px; }
-        .agent-task-item {
-          display: flex; align-items: flex-start; gap: 8px;
-          padding: 8px 12px; border-radius: 8px;
-          background: var(--bg-elevated); border: 1px solid var(--border-subtle);
-          transition: all 0.15s;
-        }
-        .agent-task-item.agent-task-running { border-color: var(--accent-border); background: var(--accent-muted); }
-        .agent-task-item.agent-task-completed { border-color: hsla(142,71%,45%,.2); }
-        .agent-task-item.agent-task-failed { border-color: hsla(0,72%,55%,.2); }
-        .agent-task-item.agent-task-blocked { border-color: hsla(38,92%,50%,.3); }
-        .agent-task-desc { font-size: 0.8125rem; color: var(--tx-primary); line-height: 1.4; }
-        .agent-task-cmd {
-          display: flex; align-items: center; gap: 4px;
-          font-size: 0.75rem; color: var(--tx-tertiary); margin-top: 2px;
-        }
-        .agent-task-cmd code {
-          font-family: var(--font-mono); background: var(--bg-overlay);
-          padding: 1px 4px; border-radius: 3px;
-        }
-
-        .agent-obs-list { display: flex; flex-direction: column; gap: 4px; }
-        .agent-obs-item {
-          display: flex; align-items: flex-start; gap: 6px;
-          font-size: 0.75rem; line-height: 1.4; padding: 4px 8px;
-          border-radius: 6px;
-        }
-        .agent-obs-item.success { color: var(--success); }
-        .agent-obs-item.fail { color: var(--danger); }
-        .agent-obs-text { flex: 1; color: var(--tx-secondary); }
-        .agent-obs-time { color: var(--tx-disabled); font-size: 0.6875rem; flex-shrink: 0; }
-
-        .agent-blocked-card {
-          padding: 16px; border-radius: 10px;
-          background: hsla(38,92%,50%,.08); border: 1px solid hsla(38,92%,50%,.3);
-          display: flex; flex-direction: column; gap: 10px;
-        }
-        .agent-blocked-header {
-          display: flex; align-items: center; gap: 6px;
-          font-size: 0.875rem; font-weight: 600; color: var(--warning);
-        }
-        .agent-blocked-reason { font-size: 0.8125rem; color: var(--tx-secondary); line-height: 1.5; }
-        .agent-approve-btn {
-          flex: 1; padding: 8px; border-radius: 6px; border: none;
-          background: var(--success); color: white; font-weight: 600;
-          font-size: 0.8125rem; cursor: pointer; transition: all 0.15s;
-        }
-        .agent-approve-btn:hover { filter: brightness(1.1); }
-
-        .agent-completed-card {
-          padding: 16px; border-radius: 10px;
-          background: hsla(142,71%,45%,.08); border: 1px solid hsla(142,71%,45%,.2);
-          display: flex; flex-direction: column; gap: 8px;
-        }
-        .agent-completed-title { font-weight: 700; color: var(--success); font-size: 0.875rem; }
-
-        .agent-failed-card {
-          padding: 16px; border-radius: 10px;
-          background: hsla(0,72%,55%,.08); border: 1px solid hsla(0,72%,55%,.2);
-          display: flex; flex-direction: column; gap: 4px;
-        }
-        .agent-failed-title { font-weight: 700; color: var(--danger); font-size: 0.875rem; }
-        .agent-failed-desc { font-size: 0.8125rem; color: var(--tx-secondary); line-height: 1.5; }
-
-        .agent-stats-bar {
-          display: flex; flex-wrap: wrap; gap: 12px;
-        }
-        .agent-stat { font-size: 0.8125rem; color: var(--tx-tertiary); display: flex; gap: 4px; }
-
-        .agent-input-area {
-          display: flex; align-items: flex-end; gap: 8px;
-          padding: 12px 16px; border-top: 1px solid var(--border);
-          background: var(--bg-secondary); flex-shrink: 0;
-        }
-        .agent-input {
-          flex: 1; resize: none; padding: 10px 14px;
-          border-radius: 10px; border: 1px solid var(--border);
-          background: var(--bg-elevated); color: var(--tx-primary);
-          font-size: 0.875rem; font-family: var(--font-sans);
-          line-height: 1.5; transition: border-color 0.15s;
-          min-height: 44px;
-        }
-        .agent-input:focus { outline: none; border-color: var(--accent); }
-        .agent-input::placeholder { color: var(--tx-disabled); }
-        .agent-input:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .agent-send-btn {
-          width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
-          display: flex; align-items: center; justify-content: center;
-          border: none; background: var(--accent); color: white;
-          cursor: pointer; transition: all 0.15s;
-        }
-        .agent-send-btn:hover:not(:disabled) { background: var(--accent-hover); }
-        .agent-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .agent-send-btn.running { background: var(--danger); }
-
-        .agent-cmd-btn {
-          padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border);
-          background: var(--bg-elevated); color: var(--tx-secondary);
-          font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s;
-        }
-        .agent-cmd-btn:hover { background: var(--bg-hover); color: var(--tx-primary); }
-        .agent-cmd-stop {
-          display: flex; align-items: center; gap: 5px;
-          padding: 5px 12px; border-radius: 6px;
-          border: 1px solid hsla(0,72%,55%,.3); background: hsla(0,72%,55%,.1);
-          color: var(--danger); font-size: 0.75rem; font-weight: 500;
-          cursor: pointer; transition: all 0.15s;
-        }
-        .agent-cmd-stop:hover { background: hsla(0,72%,55%,.2); }
-      `}</style>
     </div>
   );
 }

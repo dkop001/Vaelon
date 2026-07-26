@@ -9,10 +9,25 @@ export interface AgentTask {
   path?: string;
 }
 
-export interface AgentObservation {
-  text: string;
+export interface ToolCallRecord {
+  name: string;
+  input: any;
+  output: any;
   success: boolean;
-  timestamp: string;
+  duration_ms: number;
+  error?: string;
+}
+
+export interface WorldStateSnapshot {
+  goal: string;
+  workspace_path: string;
+  directory_tree: string[];
+  created_files: string[];
+  modified_files: string[];
+  todo: string[];
+  completed: string[];
+  failed: string[];
+  current_focus: string;
 }
 
 interface AgentState {
@@ -20,11 +35,14 @@ interface AgentState {
   goal: string;
   status: 'idle' | 'planning' | 'running' | 'blocked' | 'completed' | 'failed';
   tasks: AgentTask[];
-  observations: AgentObservation[];
+  toolCalls: ToolCallRecord[];
   filesCreatedCount: number;
   filesModifiedCount: number;
-  actionsCompletedCount: number;
+  tasksTotal: number;
+  tasksFailed: number;
   errorCount: number;
+  worldState: WorldStateSnapshot | null;
+  currentFocus: string;
   blockedActionId: string | null;
   blockedReason: string | null;
   loading: boolean;
@@ -41,11 +59,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   goal: '',
   status: 'idle',
   tasks: [],
-  observations: [],
+  toolCalls: [],
   filesCreatedCount: 0,
   filesModifiedCount: 0,
-  actionsCompletedCount: 0,
+  tasksTotal: 0,
+  tasksFailed: 0,
   errorCount: 0,
+  worldState: null,
+  currentFocus: '',
   blockedActionId: null,
   blockedReason: null,
   loading: false,
@@ -59,17 +80,17 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           goal: payload.goal,
           status: 'running',
           tasks: [],
-          observations: [],
+          toolCalls: [],
+          worldState: null,
         });
       }
     );
 
-    const unsubAction = onEvent<{ run_id: string; action: any }>(
+    const unsubAction = onEvent<{ run_id: string; action: any; world_state_snapshot: any }>(
       'agent:action_created',
       (payload) => {
-        const { action } = payload;
+        const { action, world_state_snapshot } = payload;
         set((state) => {
-          // If task already exists, update status
           const idx = state.tasks.findIndex((t) => t.id === action.id);
           const updatedTasks = [...state.tasks];
           const taskObj: AgentTask = {
@@ -84,16 +105,30 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           } else {
             updatedTasks.push(taskObj);
           }
-          return { tasks: updatedTasks, status: 'running' };
+          return {
+            tasks: updatedTasks,
+            status: 'running',
+            worldState: world_state_snapshot ? {
+              goal: world_state_snapshot.goal || '',
+              workspace_path: world_state_snapshot.workspace_path || '',
+              directory_tree: world_state_snapshot.directory_tree || [],
+              created_files: world_state_snapshot.created_files || [],
+              modified_files: world_state_snapshot.modified_files || [],
+              todo: world_state_snapshot.todo || [],
+              completed: world_state_snapshot.completed || [],
+              failed: world_state_snapshot.failed || [],
+              current_focus: world_state_snapshot.current_focus || action.description || '',
+            } : state.worldState,
+            currentFocus: world_state_snapshot?.current_focus || action.description || '',
+          };
         });
       }
     );
 
-    const unsubObservation = onEvent<{ run_id: string; observation: string; success: boolean }>(
+    const unsubObservation = onEvent<{ run_id: string; tool_call: any; success: boolean }>(
       'agent:observation',
       (payload) => {
         set((state) => {
-          // Update the last running task to completed or failed
           const updatedTasks = state.tasks.map((t) =>
             t.status === 'running'
               ? { ...t, status: payload.success ? ('completed' as const) : ('failed' as const) }
@@ -101,12 +136,15 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           );
           return {
             tasks: updatedTasks,
-            observations: [
-              ...state.observations,
+            toolCalls: [
+              ...state.toolCalls,
               {
-                text: payload.observation,
+                name: payload.tool_call?.name || 'unknown',
+                input: payload.tool_call?.input || {},
+                output: payload.tool_call?.output || {},
                 success: payload.success,
-                timestamp: new Date().toLocaleTimeString(),
+                duration_ms: payload.tool_call?.duration_ms || 0,
+                error: payload.tool_call?.error,
               },
             ],
           };
@@ -114,19 +152,23 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       }
     );
 
-    const unsubBlocked = onEvent<{ run_id: string; action_id: string; reason: string; requires_approval: boolean }>(
-      'agent:tool_blocked',
+    const unsubTaskUpdate = onEvent<{ run_id: string; task_id: string; status: string; description: string }>(
+      'agent:task_update',
       (payload) => {
         set((state) => {
-          const updatedTasks = state.tasks.map((t) =>
-            t.id === payload.action_id ? { ...t, status: 'blocked' as const } : t
-          );
-          return {
-            tasks: updatedTasks,
-            status: 'blocked',
-            blockedActionId: payload.action_id,
-            blockedReason: payload.reason,
+          const idx = state.tasks.findIndex((t) => t.id === payload.task_id);
+          const updatedTasks = [...state.tasks];
+          const taskObj: AgentTask = {
+            id: payload.task_id,
+            description: payload.description,
+            status: payload.status as AgentTask['status'],
           };
+          if (idx !== -1) {
+            updatedTasks[idx] = taskObj;
+          } else {
+            updatedTasks.push(taskObj);
+          }
+          return { tasks: updatedTasks };
         });
       }
     );
@@ -136,7 +178,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       goal: string;
       files_created: number;
       files_modified: number;
-      actions_completed: number;
+      tasks_total: number;
+      tasks_failed: number;
       errors: number;
       status: string;
     }>('agent:goal_completed', (payload) => {
@@ -144,7 +187,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         status: 'completed',
         filesCreatedCount: payload.files_created,
         filesModifiedCount: payload.files_modified,
-        actionsCompletedCount: payload.actions_completed,
+        tasksTotal: payload.tasks_total,
+        tasksFailed: payload.tasks_failed,
         errorCount: payload.errors,
       });
     });
@@ -157,7 +201,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       unsubStarted();
       unsubAction();
       unsubObservation();
-      unsubBlocked();
+      unsubTaskUpdate();
       unsubCompleted();
       unsubFailed();
     };
@@ -197,11 +241,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       goal: '',
       status: 'idle',
       tasks: [],
-      observations: [],
+      toolCalls: [],
       filesCreatedCount: 0,
       filesModifiedCount: 0,
-      actionsCompletedCount: 0,
+      tasksTotal: 0,
+      tasksFailed: 0,
       errorCount: 0,
+      worldState: null,
+      currentFocus: '',
       blockedActionId: null,
       blockedReason: null,
     });

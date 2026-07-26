@@ -106,21 +106,14 @@ export default function TerminalPanel() {
   }, [activeSessionId]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="agent-panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
-        <span className="agent-panel-title" style={{ fontWeight: 600, fontSize: '0.875rem' }}>Terminal</span>
-        <button
-          className="agent-cmd-skip"
-          onClick={() => activeSessionId && killSession(activeSessionId)}
-          style={{ fontSize: '0.6875rem', padding: '2px 8px', borderRadius: '4px', background: 'var(--bg-active)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', cursor: 'pointer' }}
-        >
+    <div className="agent-term-wrapper">
+      <div className="agent-term-header">
+        <span className="agent-term-title">Terminal</span>
+        <button className="agent-term-reset" onClick={() => activeSessionId && killSession(activeSessionId)}>
           Reset Session
         </button>
       </div>
-      <div
-        ref={containerRef}
-        style={{ flex: 1, padding: 8, background: '#0c0d12', overflow: 'hidden' }}
-      />
+      <div ref={containerRef} className="agent-term-container" />
     </div>
   );
 }
