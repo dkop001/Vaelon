@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { useAgentStore, AgentTask, AgentObservation } from '../../store/agentStore';
+import { useAgentStore, AgentTask } from '../../store/agentStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useNoteStore } from '../../store/noteStore';
 import { Icons } from '../../lib/icons';
@@ -45,15 +45,14 @@ function TaskList({ tasks }: { tasks: AgentTask[] }) {
 }
 
 // ── Observation log ───────────────────────────────────────────────────────────
-function ObservationLog({ observations }: { observations: AgentObservation[] }) {
-  if (observations.length === 0) return null;
+function ObservationLog({ toolCalls }: { toolCalls: { name: string; success: boolean; error?: string }[] }) {
+  if (toolCalls.length === 0) return null;
   return (
     <div className="agent-obs-list">
-      {observations.slice(-5).map((obs, i) => (
-        <div key={i} className={`agent-obs-item ${obs.success ? 'success' : 'fail'}`}>
-          {obs.success ? <Icons.Check /> : <Icons.Close />}
-          <span className="agent-obs-text">{obs.text}</span>
-          <span className="agent-obs-time">{obs.timestamp}</span>
+      {toolCalls.slice(-5).map((call, i) => (
+        <div key={i} className={`agent-obs-item ${call.success ? 'success' : 'fail'}`}>
+          {call.success ? <Icons.Check /> : <Icons.Close />}
+          <span className="agent-obs-text">{call.name}{call.error ? `: ${call.error.slice(0, 80)}` : ''}</span>
         </div>
       ))}
     </div>
@@ -75,8 +74,8 @@ function StatsBar({ created, modified, actions, errors }: { created: number; mod
 // ── Main AgentMode ────────────────────────────────────────────────────────────
 export default function AgentMode() {
   const {
-    status, goal, tasks, observations,
-    filesCreatedCount, filesModifiedCount, actionsCompletedCount, errorCount,
+    status, goal, tasks, toolCalls,
+    filesCreatedCount, filesModifiedCount, tasksTotal, errorCount,
     blockedReason,
     startAgent, stopAgent, approveAction, clearState,
   } = useAgentStore();
@@ -203,8 +202,8 @@ export default function AgentMode() {
                 </div>
               )}
 
-              {/* Observation log */}
-              <ObservationLog observations={observations} />
+              {/* Tool call log */}
+              <ObservationLog toolCalls={toolCalls} />
 
               {/* Completed stats */}
               {status === 'completed' && (
@@ -213,7 +212,7 @@ export default function AgentMode() {
                   <StatsBar
                     created={filesCreatedCount}
                     modified={filesModifiedCount}
-                    actions={actionsCompletedCount}
+                    actions={tasksTotal}
                     errors={errorCount}
                   />
                 </div>

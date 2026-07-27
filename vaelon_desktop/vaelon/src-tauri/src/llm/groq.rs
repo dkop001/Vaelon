@@ -114,6 +114,11 @@ pub async fn complete_blocking(req: &LlmRequest, settings: &LlmSettings) -> Resu
         .send()
         .await?;
 
+    if !resp.status().is_success() {
+        let err = resp.text().await?;
+        return Err(anyhow!("Groq error: {}", err));
+    }
+
     let data: Resp = resp.json().await?;
     Ok(data.choices.into_iter().next().map(|c| c.message.content).unwrap_or_default())
 }

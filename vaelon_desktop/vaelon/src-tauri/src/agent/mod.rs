@@ -29,7 +29,7 @@ pub mod recovery;
 
 use crate::agent::{
     actions::{Action, ActionType},
-    roles::planner::Planner,
+    roles::planner::{InitialPlan, Planner},
     task_graph::{Scheduler, TaskGraph, TaskStatus},
     worker::Worker,
     verifier::Verifier,
@@ -191,30 +191,36 @@ async fn agent_loop(
         ws.goal.clone()
     });
 
-    let initial_action = Planner::plan_next(&state, &llm_settings).await?;
+    let plan = Planner::initial_plan(&state, &llm_settings).await?;
 
-    // If planner returns an expand-type thought, use it to populate the graph
-    if initial_action.action_type == ActionType::Think && !graph.is_empty() {
-        // Try to expand the root task
-        let description = {
+    match plan {
+        InitialPlan::Done(summary) => {
+            tracing::info!("Planner considers goal already achieved: {}", summary);
+            // Return early with minimal summary
             let ws = state.lock().await;
-            ws.goal.clone()
-        };
-        let subtasks = Planner::expand_task(&description, &state, &llm_settings).await?;
-        for task in subtasks {
-            let task_id = task.id.clone();
-            let desc = task.description.clone();
-            graph.add_child(&root_id, desc, task.priority);
-            if let Some(action) = task.action {
-                if let Some(child) = graph.nodes_with_status(TaskStatus::Waiting).first() {
-                    let child_id = child.id.clone();
-                    graph.set_action(&child_id, action);
+            return Ok(AgentCompletedEvent {
+                run_id: run_id.clone(),
+                goal: ws.goal.clone(),
+                files_created: ws.created_files.len(),
+                files_modified: ws.modified_files.len(),
+                actions_completed: ws.completed.len(),
+                tasks_total: 0,
+                tasks_failed: 0,
+                errors: ws.diagnostics.len(),
+                status: "success".into(),
+            });
+        }
+        InitialPlan::Tasks(tasks) => {
+            // Add all tasks from the plan as children of root
+            for task in tasks {
+                if let Some(child_id) = graph.add_child(&root_id, &task.description, task.priority) {
+                    if let Some(action) = task.action {
+                        graph.set_action(&child_id, action);
+                    }
                 }
             }
-            // Set dependencies
-            for dep_id in task.dependencies {
-                graph.add_dependency(&task_id, &dep_id);
-            }
+            // Root is now decomposed — mark finished
+            graph.set_status(&root_id, TaskStatus::Finished);
         }
     }
 
@@ -372,9 +378,11 @@ async fn agent_loop(
         let result = worker.execute(&task, &state).await;
 
         // Emit observation
+        let action_type_name = task.action.as_ref().map(|a| a.action_type.as_ref().to_string()).unwrap_or_default();
         let _ = app.emit("agent:observation", AgentObservationEvent {
             run_id: run_id.clone(),
             tool_call: serde_json::json!({
+                "name": action_type_name,
                 "action": task.action.as_ref().map(|a| serde_json::to_value(a).unwrap_or_default()),
                 "result": {
                     "success": result.success,

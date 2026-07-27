@@ -138,23 +138,34 @@ export default function SettingsPanel({ onClose }: Props) {
               />
             </div>
 
-            {models.length > 0 && (
-              <div className="settings-field">
-                <label className="settings-label">Active Model</label>
+            <div className="settings-field">
+              <label className="settings-label">Active Model</label>
+              {models.length > 0 ? (
                 <select
                   className="settings-select"
                   value={settings.ollama_model || ''}
                   onChange={(e) => update('ollama_model', e.target.value || undefined)}
                 >
+                  {!settings.ollama_model && <option value="">— Select a model —</option>}
                   {models.map((m) => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
-                <p className="settings-hint">
-                  Pull more models: <code>ollama pull {'<model>'}</code>
-                </p>
-              </div>
-            )}
+              ) : (
+                <input
+                  type="text"
+                  className="settings-input"
+                  placeholder="e.g. llama3.2:3b, qwen2.5-coder:7b"
+                  value={settings.ollama_model || ''}
+                  onChange={(e) => update('ollama_model', e.target.value || undefined)}
+                />
+              )}
+              <p className="settings-hint">
+                {ollamaStatus === 'online'
+                  ? `Pull more models: ollama pull <model>`
+                  : `Models not loaded — make sure Ollama is running, then click Refresh`}
+              </p>
+            </div>
           </section>
 
           {/* ── Cloud Fallback ── */}

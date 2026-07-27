@@ -39,25 +39,11 @@ impl Worker {
 
         let mut result = self.execute_with_retry(&action, state, 0).await;
 
-        // Self-healing loop: retry with increasing context
-        let max_retries = 3;
+        // Self-healing loop: diagnose failure, repair, retry
+        let max_retries = 2;
         for attempt in 1..=max_retries {
             if result.success {
                 break;
-            }
-
-            // Collect diagnostics
-            let stderr = result.error.as_deref().unwrap_or("");
-            let exit_code = result.exit_code.unwrap_or(-1);
-            let _diff = collect_diff(&action);
-
-            {
-                let mut ws = state.lock().await;
-                ws.push_diagnostic(format!(
-                    "Retry {}/{} for `{}`: exit={}, error={}",
-                    attempt, max_retries, action.description, exit_code,
-                    stderr.chars().take(200).collect::<String>()
-                ));
             }
 
             // Diagnose and fix
@@ -69,7 +55,6 @@ impl Worker {
                 if r.success {
                     repaired = true;
                 }
-                // Record repair attempt
                 let mut ws = state.lock().await;
                 ws.record_tool_call(ToolCall {
                     name: format!("repair:{}", repair.action_type.as_ref()),
@@ -82,7 +67,6 @@ impl Worker {
             }
 
             if repaired || attempt < max_retries {
-                // Retry the original action
                 result = self.execute_tool(&action, state).await;
                 if result.success {
                     break;
@@ -111,36 +95,25 @@ impl Worker {
     ) -> ToolResult {
         let start = Instant::now();
 
+        // Validate required fields before execution
         let result = match action.action_type {
             ActionType::WriteFile | ActionType::EditFile => {
-                self.write_file(action).await
-            }
-            ActionType::ReadFile => {
-                self.read_file(action).await
-            }
-            ActionType::DeleteFile => {
-                self.delete_file(action).await
-            }
-            ActionType::ListDirectory => {
-                self.list_directory(action).await
-            }
-            ActionType::RunCommand => {
-                self.run_command(action).await
-            }
-            ActionType::SearchCode => {
-                self.search_code(action).await
-            }
-            ActionType::Think => {
-                ToolResult {
-                    success: true,
-                    output: action.thought.clone().or_else(|| Some(action.description.clone())),
-                    error: None,
-                    exit_code: Some(0),
+                if action.path.is_none() {
+                    ToolResult { success: false, output: None, error: Some("No path provided for file operation".into()), exit_code: Some(1) }
+                } else if action.action_type == ActionType::WriteFile && action.content.is_none() {
+                    ToolResult { success: false, output: None, error: Some("No content provided for write".into()), exit_code: Some(1) }
+                } else {
+                    self.write_file(action).await
                 }
             }
-            ActionType::Done => {
-                ToolResult { success: true, output: Some("Done".into()), error: None, exit_code: Some(0) }
+            ActionType::RunCommand => {
+                if action.command.is_none() {
+                    ToolResult { success: false, output: None, error: Some("No command provided".into()), exit_code: Some(1) }
+                } else {
+                    self.run_command(action).await
+                }
             }
+            _ => self.execute_tool_inner(action).await,
         };
 
         let duration = start.elapsed().as_millis() as u64;
@@ -213,6 +186,44 @@ impl Worker {
         }
 
         result
+    }
+
+    /// Inner dispatch for action types that pass validation.
+    async fn execute_tool_inner(
+        &self,
+        action: &Action,
+    ) -> ToolResult {
+        match action.action_type {
+            ActionType::WriteFile | ActionType::EditFile => {
+                self.write_file(action).await
+            }
+            ActionType::ReadFile => {
+                self.read_file(action).await
+            }
+            ActionType::DeleteFile => {
+                self.delete_file(action).await
+            }
+            ActionType::ListDirectory => {
+                self.list_directory(action).await
+            }
+            ActionType::RunCommand => {
+                self.run_command(action).await
+            }
+            ActionType::SearchCode => {
+                self.search_code(action).await
+            }
+            ActionType::Think => {
+                ToolResult {
+                    success: true,
+                    output: action.thought.clone().or_else(|| Some(action.description.clone())),
+                    error: None,
+                    exit_code: Some(0),
+                }
+            }
+            ActionType::Done => {
+                ToolResult { success: true, output: Some("Done".into()), error: None, exit_code: Some(0) }
+            }
+        }
     }
 
     async fn write_file(&self, action: &Action) -> ToolResult {
@@ -317,19 +328,6 @@ impl Worker {
 }
 
 // ── Diagnostics ─────────────────────────────────────────────────────────
-
-/// Collect diff for a file action (simple: check if file changed).
-fn collect_diff(action: &Action) -> String {
-    if let Some(path) = &action.path {
-        if let Ok(content) = std::fs::read_to_string(path) {
-            let expected = action.content.as_deref().unwrap_or("");
-            if content != expected {
-                return format!("File {} differs from expected content", path);
-            }
-        }
-    }
-    String::new()
-}
 
 /// Diagnose a failure and generate repair actions.
 fn diagnose(action: &Action, result: &ToolResult) -> Vec<Action> {

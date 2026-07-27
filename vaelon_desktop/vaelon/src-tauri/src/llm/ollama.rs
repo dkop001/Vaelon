@@ -59,9 +59,7 @@ pub async fn list_models(base_url: &str) -> Result<Vec<ModelInfo>> {
 
 pub async fn stream_chat(app: &AppHandle, req: &LlmRequest, settings: &LlmSettings) -> Result<String> {
     let client = Client::new();
-    let model = req.model.clone()
-        .or_else(|| settings.ollama_model.clone())
-        .unwrap_or_else(|| "llama3.2:3b".into());
+    let model = resolve_model(req, settings).await?;
 
     let mut body = json!({
         "model": model,
@@ -113,12 +111,25 @@ pub async fn stream_chat(app: &AppHandle, req: &LlmRequest, settings: &LlmSettin
     Ok(full_content)
 }
 
+/// Pick the model to use, with auto-detection fallback.
+pub async fn resolve_model(req: &LlmRequest, settings: &LlmSettings) -> Result<String> {
+    if let Some(m) = req.model.clone().or_else(|| settings.ollama_model.clone()) {
+        return Ok(m);
+    }
+    // Auto-detect first available model
+    let models = list_models(&settings.ollama_base_url).await?;
+    if let Some(m) = models.first() {
+        return Ok(m.name.clone());
+    }
+    Err(anyhow::anyhow!(
+        "No Ollama model configured. Open Settings → Ollama → Active Model and choose one, or run: ollama pull <model>"
+    ))
+}
+
 /// Non-streaming, returns full response text.
 pub async fn complete_blocking(req: &LlmRequest, settings: &LlmSettings) -> Result<String> {
     let client = Client::new();
-    let model = req.model.clone()
-        .or_else(|| settings.ollama_model.clone())
-        .unwrap_or_else(|| "llama3.2:3b".into());
+    let model = resolve_model(req, settings).await?;
 
     let mut body = json!({
         "model": model,
@@ -142,6 +153,11 @@ pub async fn complete_blocking(req: &LlmRequest, settings: &LlmSettings) -> Resu
         .json(&body)
         .send()
         .await?;
+
+    if !resp.status().is_success() {
+        let err = resp.text().await?;
+        return Err(anyhow::anyhow!("Ollama error: {}", err));
+    }
 
     let data: NonStreamResp = resp.json().await?;
     Ok(data.message.content)
