@@ -3,30 +3,9 @@
 // past conversations, folder structure, completed tasks. No repeated prompting.
 
 import { create } from 'zustand';
+import { api, MemoryEntry, MemoryType } from '../ipc/client';
 
-export interface MemoryEntry {
-  id: string;
-  project_id: string;
-  workspace_id: string;
-  type: MemoryType;
-  key: string;
-  value: string;
-  context?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export type MemoryType = 
-  | 'architecture' 
-  | 'patterns' 
-  | 'coding-style' 
-  | 'tech-stack' 
-  | 'mistakes' 
-  | 'conversations' 
-  | 'folder-structure' 
-  | 'completed-tasks'
-  | 'decisions'
-  | 'custom';
+export type { MemoryEntry, MemoryType };
 
 interface AgentMemoryState {
   memories: MemoryEntry[];
@@ -68,11 +47,10 @@ export const useAgentMemoryStore = create<AgentMemoryState>((set, get) => ({
     await get().loadMemories(projectId, workspaceId);
   },
 
-  loadMemories: async () => {
+  loadMemories: async (projectId: string, workspaceId: string) => {
     set({ loading: true, error: null });
     try {
-      // Backend doesn't have memory commands yet, store locally for now
-      const list: MemoryEntry[] = [];
+      const list = await api.memoryList(workspaceId, projectId || undefined);
       set({ memories: list, loading: false });
     } catch (err: any) {
       set({ error: err.toString(), loading: false });
@@ -95,17 +73,36 @@ export const useAgentMemoryStore = create<AgentMemoryState>((set, get) => ({
       created_at: nowStr(),
       updated_at: nowStr(),
     };
-    set(s => ({ memories: [...s.memories, fullEntry] }));
+    try {
+      const saved = await api.memorySet(fullEntry);
+      set(s => {
+        const existing = s.memories.some(m => m.id === saved.id);
+        const others = s.memories.filter(m => !(m.type === saved.type && m.key === saved.key));
+        return { memories: existing ? others.concat([saved]) : [...others, saved] };
+      });
+    } catch (err: any) {
+      set({ error: err.toString() });
+    }
   },
 
   updateMemory: async (id: string, value: string) => {
-    set(s => ({
-      memories: s.memories.map(m => m.id === id ? { ...m, value, updated_at: nowStr() } : m)
-    }));
+    try {
+      await api.memoryUpdate(id, value);
+      set(s => ({
+        memories: s.memories.map(m => m.id === id ? { ...m, value, updated_at: nowStr() } : m)
+      }));
+    } catch (err: any) {
+      set({ error: err.toString() });
+    }
   },
 
   deleteMemory: async (id: string) => {
-    set(s => ({ memories: s.memories.filter(m => m.id !== id) }));
+    try {
+      await api.memoryDelete(id);
+      set(s => ({ memories: s.memories.filter(m => m.id !== id) }));
+    } catch (err: any) {
+      set({ error: err.toString() });
+    }
   },
 
   getContextForAgent: () => {

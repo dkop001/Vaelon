@@ -8,10 +8,11 @@ use crate::fs::{self, FsEntry};
 use crate::graph;
 use crate::llm::{self, LlmSettings, ModelInfo};
 use crate::rag::indexer;
+use crate::services::{self, ServicesManager};
 use crate::terminal::TerminalManager;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Emitter, State};
 
 // ── App State ─────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ pub struct AppState {
     pub agent_manager: Arc<AgentManager>,
     pub terminal_manager: Arc<TerminalManager>,
     pub fs_watchers: Arc<Mutex<Vec<notify::RecommendedWatcher>>>,
+    pub services: Arc<ServicesManager>,
 }
 
 // ── Workspace Commands ────────────────────────────────────────────────────
@@ -67,6 +69,29 @@ pub fn project_create_cmd(
 #[tauri::command]
 pub fn project_delete_cmd(state: State<AppState>, id: String) -> Result<(), String> {
     project_delete(&state.db, &id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn project_update_cmd(state: State<AppState>, project: Project) -> Result<Project, String> {
+    project_update(&state.db, &project).map_err(|e| e.to_string())?;
+    Ok(project)
+}
+
+#[tauri::command]
+pub fn project_meta_get_cmd(
+    state: State<AppState>,
+    project_id: String,
+) -> Result<Option<ProjectMeta>, String> {
+    project_meta_get(&state.db, &project_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn project_meta_set_cmd(
+    state: State<AppState>,
+    meta: ProjectMeta,
+) -> Result<ProjectMeta, String> {
+    project_meta_set(&state.db, &meta).map_err(|e| e.to_string())?;
+    Ok(meta)
 }
 
 // ── Note Commands ─────────────────────────────────────────────────────────
@@ -231,6 +256,10 @@ pub async fn chat_send_cmd(
             }
             Err(e) => {
                 tracing::error!("LLM error: {}", e);
+                let _ = app.emit("llm:error", serde_json::json!({
+                    "session_id": params.session_id,
+                    "message": e.to_string(),
+                }));
             }
         }
     });
@@ -277,6 +306,7 @@ pub async fn llm_complete_streaming_cmd(
     session_id: String,
 ) -> Result<(), String> {
     let settings = state.llm_settings.lock().unwrap().clone();
+    let session_id_clone = session_id.clone();
     let req = llm::LlmRequest {
         messages,
         temperature,
@@ -286,7 +316,13 @@ pub async fn llm_complete_streaming_cmd(
         session_id,
     };
     tokio::spawn(async move {
-        let _ = llm::complete_streaming(app, req, &settings).await;
+        if let Err(e) = llm::complete_streaming(app.clone(), req, &settings).await {
+            tracing::error!("LLM streaming error: {}", e);
+            let _ = app.emit("llm:error", serde_json::json!({
+                "session_id": session_id_clone,
+                "message": e.to_string(),
+            }));
+        }
     });
     Ok(())
 }
@@ -379,9 +415,10 @@ pub fn agent_start_cmd(
     state: State<AppState>,
     goal: String,
     workspace_path: String,
+    project_id: Option<String>,
 ) -> String {
     let settings = state.llm_settings.lock().unwrap().clone();
-    state.agent_manager.start(app, goal, workspace_path, state.db.clone(), settings)
+    state.agent_manager.start(app, goal, workspace_path, project_id, state.db.clone(), settings)
 }
 
 #[tauri::command]
@@ -392,6 +429,11 @@ pub fn agent_stop_cmd(state: State<AppState>, run_id: String) {
 #[tauri::command]
 pub fn agent_approve_cmd(state: State<AppState>, action_id: String) {
     state.agent_manager.approve(&action_id);
+}
+
+#[tauri::command]
+pub fn agent_deny_cmd(state: State<AppState>, action_id: String) {
+    state.agent_manager.deny(&action_id);
 }
 
 // ── Config Commands ───────────────────────────────────────────────────────
@@ -447,5 +489,89 @@ pub fn graph_query_cmd(
     workspace_id: String,
 ) -> Result<GraphSnapshot, String> {
     graph_snapshot(&state.db, &workspace_id).map_err(|e| e.to_string())
+}
+
+// ── Background Services (Phase 3) ──────────────────────────────────────────
+
+/// Start the always-on background services for a workspace.
+#[tauri::command]
+pub fn services_start_cmd(
+    app: AppHandle,
+    state: State<AppState>,
+    workspace_id: String,
+    workspace_path: String,
+) {
+    services::start_for_workspace(
+        app,
+        state.db.clone(),
+        state.services.clone(),
+        workspace_id,
+        workspace_path,
+    );
+}
+
+/// Current status of all background services.
+#[tauri::command]
+pub fn services_status_cmd(state: State<AppState>) -> serde_json::Value {
+    state.services.all_statuses()
+}
+
+/// Query persisted timeline events for a workspace.
+#[tauri::command]
+pub fn timeline_query_cmd(
+    state: State<AppState>,
+    workspace_id: String,
+    since: Option<String>,
+    kinds: Option<Vec<String>>,
+) -> Result<Vec<TimelineEvent>, String> {
+    timeline_query(
+        &state.db,
+        &workspace_id,
+        since.as_deref(),
+        kinds.as_deref(),
+    )
+    .map_err(|e| e.to_string())
+}
+
+// ── Agent Memory (Phase 4) ──────────────────────────────────────────────────
+
+/// List memories for a project (optionally filtered by type).
+#[tauri::command]
+pub fn memory_list_cmd(
+    state: State<AppState>,
+    workspace_id: String,
+    project_id: Option<String>,
+    r#type: Option<String>,
+) -> Result<Vec<MemoryEntry>, String> {
+    memory_list(
+        &state.db,
+        &workspace_id,
+        project_id.as_deref(),
+        r#type.as_deref(),
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// Insert or update a memory.
+#[tauri::command]
+pub fn memory_set_cmd(state: State<AppState>, entry: MemoryEntry) -> Result<MemoryEntry, String> {
+    memory_upsert(&state.db, &entry).map_err(|e| e.to_string())
+}
+
+/// Update an existing memory's value.
+#[tauri::command]
+pub fn memory_update_cmd(
+    state: State<AppState>,
+    id: String,
+    value: String,
+    context: Option<String>,
+) -> Result<(), String> {
+    memory_update(&state.db, &id, &value, context.as_deref()).map_err(|e| e.to_string())
+}
+
+/// Delete a memory by id.
+#[tauri::command]
+pub fn memory_delete_cmd(state: State<AppState>, id: String) -> Result<(), String> {
+    memory_delete(&state.db, &id).map_err(|e| e.to_string())
 }
 

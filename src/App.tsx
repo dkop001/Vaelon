@@ -7,7 +7,9 @@ import CommandPalette from './components/workspace/CommandPalette';
 import SettingsPanel from './components/workspace/SettingsPanel';
 import AgentMode from './features/agent/AgentMode';
 import MissionControl from './features/mission-control/MissionControl';
+import ProjectsView from './features/projects/ProjectsView';
 import GraphView from './features/graph/GraphView';
+import TimelineView from './features/timeline/TimelineView';
 import SearchPage from './features/search/SearchPage';
 import DocumentWorkspace from './features/editor/DocumentWorkspace';
 import { useAppStore } from './store/appStore';
@@ -25,7 +27,9 @@ function AppContent() {
 
   // ── Init Workspace State on Mount ──────────────────────────────────────────
   useEffect(() => {
-    initWorkspaces();
+    initWorkspaces().catch((err: any) => {
+      console.error('Failed to init workspaces:', err);
+    });
   }, []);
 
   // ── Load Documents when Workspace or Project changes ───────────────────────
@@ -98,7 +102,7 @@ function AppContent() {
             )}
 
             {activeView === 'projects' && (
-              <div className="page-placeholder">Projects View - Coming Soon</div>
+              <ProjectsView />
             )}
 
             {activeView === 'tasks' && (
@@ -122,7 +126,7 @@ function AppContent() {
             )}
 
             {activeView === 'timeline' && (
-              <div className="page-placeholder">Timeline View - Coming Soon</div>
+              <TimelineView />
             )}
 
             {activeView === 'terminal' && (

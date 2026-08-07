@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore, ActiveView } from '../../store/appStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useDocumentStore, Document } from '../../store/noteStore';
 import { api } from '../../ipc/client';
@@ -80,7 +80,7 @@ const IconFile = () => (
     <path d="M8.5 1v2.5H11" stroke="currentColor" strokeWidth="1.2"/>
   </svg>
 );
-const NAV = [
+const NAV: { id: ActiveView | 'chatHistory'; label: string; Icon: React.FC }[] = [
   { id: 'home',       label: 'Mission Control', Icon: IconHome      },
   { id: 'projects',   label: 'Projects',        Icon: IconProjects  },
   { id: 'documents',  label: 'Knowledge',       Icon: IconKnowledge },
@@ -148,12 +148,13 @@ interface SidebarProps {
 
 export default function Sidebar({ onNewDocument }: SidebarProps) {
   const { activeView, setActiveView, sidebarMode, setSidebarMode, backgroundServices, setActiveProjectPath } = useAppStore();
-  const { workspaces, activeWorkspaceId, selectWorkspace } = useWorkspaceStore();
+  const { workspaces, activeWorkspaceId, selectWorkspace, projects, activeProjectId, selectProject, getActiveProject } = useWorkspaceStore();
   const { documents, activeDocumentId, selectDocument } = useDocumentStore();
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
   const [treeLoading, setTreeLoading] = useState(false);
 
   const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);
+  const activeProject = getActiveProject();
 
   // Load file tree for the active workspace
   useEffect(() => {
@@ -177,12 +178,17 @@ export default function Sidebar({ onNewDocument }: SidebarProps) {
       .finally(() => setTreeLoading(false));
   }, [activeWs?.path, setActiveProjectPath]);
 
-  const handleNavClick = (id: string) => {
+  const handleSwitchProject = (id: string) => {
+    selectProject(id);
+    setActiveView('documents');
+  };
+
+  const handleNavClick = (id: ActiveView | 'chatHistory') => {
     if (id === 'chatHistory') {
       setSidebarMode('chatHistory');
     } else {
       setSidebarMode('nav');
-      setActiveView(id as any);
+      setActiveView(id);
     }
   };
 
@@ -198,7 +204,7 @@ export default function Sidebar({ onNewDocument }: SidebarProps) {
     <aside className="sidebar workspace-sidebar" aria-label="Project Navigator" id="workspace-sidebar">
       <nav className="sidebar-section" aria-label="Main navigation">
         {NAV.map(({ id, label, Icon }) => {
-          const isActive = activeView === (id as string);
+          const isActive = id !== 'chatHistory' && activeView === id;
           return (
             <button
               key={id}
@@ -221,16 +227,56 @@ export default function Sidebar({ onNewDocument }: SidebarProps) {
       {/* Active project header */}
       <div style={{ padding: 'var(--sp-3) var(--sp-4)', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <div className="sidebar-label">Active Project</div>
-        <div className="pnav-project-item active">
-          <span className="sidebar-item-icon"><IconFolder /></span>
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {activeWs?.name || 'No project open'}
-          </span>
-        </div>
+        {activeProject ? (
+          <>
+            <div className="pnav-project-item active">
+              <span className="sidebar-item-icon"><IconFolder /></span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {activeProject.name}
+              </span>
+              <span className="project-dot" style={{ background: activeProject.color || 'var(--accent)' }} />
+            </div>
+            {activeProject.description && (
+              <span style={{ fontSize: 9, color: 'var(--tx-disabled)', padding: '0 var(--sp-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {activeProject.description}
+              </span>
+            )}
+          </>
+        ) : (
+          <div className="pnav-project-item active">
+            <span className="sidebar-item-icon"><IconFolder /></span>
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {activeWs?.name || 'No workspace open'}
+            </span>
+          </div>
+        )}
         {activeWs && <span style={{ fontSize: 9, color: 'var(--tx-disabled)', padding: '0 var(--sp-3)' }}>{activeWs.path}</span>}
       </div>
 
       {/* Project quick switcher */}
+      {activeWs && projects.length > 0 && (
+        <>
+          <div style={{ padding: 'var(--sp-2) var(--sp-4)' }}>
+            <div className="sidebar-label">Projects</div>
+          </div>
+          <div style={{ padding: '0 var(--sp-2)' }}>
+            {projects.map((project) => (
+              <div
+                key={project.id}
+                className={`pnav-project-item ${project.id === activeProjectId ? 'active' : ''}`}
+                onClick={() => handleSwitchProject(project.id)}
+                title={project.description || project.name}
+              >
+                <span className="sidebar-item-icon"><IconFolder /></span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project.name}</span>
+                <span className="project-dot" style={{ background: project.color || 'var(--accent)' }} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Workspace switcher */}
       {workspaces.length > 1 && (
         <>
           <div style={{ padding: 'var(--sp-2) var(--sp-4)' }}>

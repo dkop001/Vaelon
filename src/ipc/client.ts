@@ -22,8 +22,22 @@ export interface Project {
   name: string;
   description: string;
   color: string;
+  path: string;
   archived: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+// Project Identity — profile every subsystem reads before acting.
+export interface ProjectMeta {
+  project_id: string;
+  mission: string;
+  tech_stack: string;
+  architecture: string;
+  coding_style: string;
+  current_milestone: string;
+  priority: string;
+  known_problems: string;
   updated_at: string;
 }
 
@@ -163,6 +177,33 @@ export interface GraphSnapshot {
   scanned_at: string;
 }
 
+export type ServiceStatus = 'starting' | 'active' | 'inactive' | 'error';
+
+// Agent Memory (Phase 4)
+export type MemoryType =
+  | 'architecture'
+  | 'patterns'
+  | 'coding-style'
+  | 'tech-stack'
+  | 'mistakes'
+  | 'conversations'
+  | 'folder-structure'
+  | 'completed-tasks'
+  | 'decisions'
+  | 'custom';
+
+export interface MemoryEntry {
+  id: string;
+  project_id: string;
+  workspace_id: string;
+  type: MemoryType;
+  key: string;
+  value: string;
+  context: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Commands ──────────────────────────────────────────────────────────────
 
 export const api = {
@@ -175,6 +216,9 @@ export const api = {
   projectList: (workspaceId: string) => invoke<Project[]>('project_list_cmd', { workspaceId }),
   projectCreate: (workspaceId: string, name: string) => invoke<Project>('project_create_cmd', { workspaceId, name }),
   projectDelete: (id: string) => invoke<void>('project_delete_cmd', { id }),
+  projectUpdate: (project: Project) => invoke<Project>('project_update_cmd', { project }),
+  projectMetaGet: (projectId: string) => invoke<ProjectMeta | null>('project_meta_get_cmd', { projectId }),
+  projectMetaSet: (meta: ProjectMeta) => invoke<ProjectMeta>('project_meta_set_cmd', { meta }),
 
   // Notes
   noteList: (workspaceId: string, projectId?: string) => invoke<Note[]>('note_list_cmd', { workspaceId, projectId }),
@@ -184,6 +228,8 @@ export const api = {
   noteUpdate: (note: Note) => invoke<Note>('note_update_cmd', { note }),
   noteDelete: (id: string) => invoke<void>('note_delete_cmd', { id }),
   noteSearch: (workspaceId: string, query: string) => invoke<SearchResult[]>('note_search_cmd', { workspaceId, query }),
+  noteSemanticSearch: (workspaceId: string, query: string, topK?: number) =>
+    invoke<SearchResult[]>('note_semantic_search_cmd', { workspaceId, query, topK }),
 
   // Chat
   chatSessionList: (workspaceId: string) => invoke<ChatSession[]>('chat_session_list_cmd', { workspaceId }),
@@ -217,9 +263,11 @@ export const api = {
   terminalKill: (id: string) => invoke<void>('terminal_kill_cmd', { id }),
 
   // Agent
-  agentStart: (goal: string, workspacePath: string) => invoke<string>('agent_start_cmd', { goal, workspacePath }),
+  agentStart: (goal: string, workspacePath: string, projectId?: string) =>
+    invoke<string>('agent_start_cmd', { goal, workspacePath, projectId }),
   agentStop: (runId: string) => invoke<void>('agent_stop_cmd', { runId }),
   agentApprove: (actionId: string) => invoke<void>('agent_approve_cmd', { actionId }),
+  agentDeny: (actionId: string) => invoke<void>('agent_deny_cmd', { actionId }),
 
   // Config
   configGet: (key: string) => invoke<string | null>('config_get_cmd', { key }),
@@ -237,6 +285,19 @@ export const api = {
     invoke<GraphSnapshot>('graph_scan_cmd', { workspaceId, workspacePath }),
   graphQuery: (workspaceId: string) =>
     invoke<GraphSnapshot>('graph_query_cmd', { workspaceId }),
+
+  // Background Services (Phase 3)
+  servicesStart: (workspaceId: string, workspacePath: string) =>
+    invoke<void>('services_start_cmd', { workspaceId, workspacePath }),
+  servicesStatus: () => invoke<Record<string, ServiceStatus>>('services_status_cmd'),
+
+  // Agent Memory (Phase 4)
+  memoryList: (workspaceId: string, projectId?: string, type?: MemoryType) =>
+    invoke<MemoryEntry[]>('memory_list_cmd', { workspaceId, projectId, type }),
+  memorySet: (entry: MemoryEntry) => invoke<MemoryEntry>('memory_set_cmd', { entry }),
+  memoryUpdate: (id: string, value: string, context?: string) =>
+    invoke<void>('memory_update_cmd', { id, value, context }),
+  memoryDelete: (id: string) => invoke<void>('memory_delete_cmd', { id }),
 };
 
 // ── Events ────────────────────────────────────────────────────────────────

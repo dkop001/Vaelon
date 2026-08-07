@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import { api, Workspace, Project } from '../ipc/client';
+import { api, Workspace, Project, ProjectMeta } from '../ipc/client';
 
 interface WorkspaceState {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
   projects: Project[];
   activeProjectId: string | null;
+  projectMeta: ProjectMeta | null;
   loading: boolean;
   error: string | null;
 
@@ -15,10 +16,12 @@ interface WorkspaceState {
   deleteWorkspace: (id: string) => Promise<void>;
   updateWorkspace: (id: string, updates: Partial<Workspace>) => Promise<void>;
 
-  selectProject: (id: string) => void;
+  selectProject: (id: string) => Promise<void>;
   createProject: (name: string, description?: string) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
+  loadProjectMeta: (projectId: string) => Promise<void>;
+  setProjectMeta: (meta: ProjectMeta) => Promise<void>;
   getActiveProject: () => Project | null;
   getActiveWorkspace: () => Workspace | null;
 }
@@ -28,6 +31,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeWorkspaceId: null,
   projects: [],
   activeProjectId: null,
+  projectMeta: null,
   loading: false,
   error: null,
 
@@ -53,8 +57,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       if (pList.length > 0) {
         const defaultProj = pList.find((p) => p.id === 'default') || pList[0];
         set({ activeProjectId: defaultProj.id });
+        get().loadProjectMeta(defaultProj.id).catch(() => {});
       } else {
-        set({ activeProjectId: null });
+        set({ activeProjectId: null, projectMeta: null });
+      }
+      // Start background intelligence services for this workspace (Phase 3).
+      const ws = get().workspaces.find((w) => w.id === id);
+      if (ws?.path) {
+        api.servicesStart(id, ws.path).catch(() => {});
       }
     } catch (err: any) {
       set({ error: err.toString(), loading: false });
@@ -99,8 +109,27 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set({ workspaces: get().workspaces.map(w => w.id === id ? updated : w) });
   },
 
-  selectProject: (id: string) => {
+  selectProject: async (id: string) => {
     set({ activeProjectId: id });
+    await get().loadProjectMeta(id).catch(() => {});
+  },
+
+  loadProjectMeta: async (projectId: string) => {
+    try {
+      const meta = await api.projectMetaGet(projectId);
+      set({ projectMeta: meta });
+    } catch {
+      set({ projectMeta: null });
+    }
+  },
+
+  setProjectMeta: async (meta: ProjectMeta) => {
+    try {
+      const saved = await api.projectMetaSet(meta);
+      set({ projectMeta: saved });
+    } catch (err: any) {
+      set({ error: err.toString() });
+    }
   },
 
   createProject: async (name: string, description?: string) => {
@@ -110,11 +139,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     try {
       const project = await api.projectCreate(wsId, name);
       if (description) {
-        // Update description locally since backend doesn't support it yet
-        project.description = description;
+        await get().updateProject(project.id, { description });
       }
       const pList = await api.projectList(wsId);
       set({ projects: pList, loading: false, activeProjectId: project.id });
+      get().loadProjectMeta(project.id).catch(() => {});
     } catch (err: any) {
       set({ error: err.toString(), loading: false });
     }
@@ -131,8 +160,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       if (get().activeProjectId === id) {
         if (pList.length > 0) {
           set({ activeProjectId: pList[0].id });
+          get().loadProjectMeta(pList[0].id).catch(() => {});
         } else {
-          set({ activeProjectId: null });
+          set({ activeProjectId: null, projectMeta: null });
         }
       }
       set({ loading: false });
@@ -145,9 +175,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const project = get().projects.find(p => p.id === id);
     if (!project) return;
     const updated = { ...project, ...updates, updated_at: new Date().toISOString() };
-    set({ projects: get().projects.map(p => p.id === id ? updated : p) });
-    if (get().activeProjectId === id) {
-      set({ activeProjectId: updated.id });
+    try {
+      await api.projectUpdate(updated);
+      set({ projects: get().projects.map(p => p.id === id ? updated : p) });
+      if (get().activeProjectId === id) {
+        set({ activeProjectId: updated.id });
+      }
+    } catch (err: any) {
+      set({ error: err.toString() });
     }
   },
 

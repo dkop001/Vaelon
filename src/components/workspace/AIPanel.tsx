@@ -5,6 +5,35 @@ import { useChatStore } from '../../store/chatStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useAgentMemoryStore } from '../../store/agentMemoryStore';
 import { api, onEvent, ProjectIntelligence } from '../../ipc/client';
+
+// Build the full project context sent with every chat message: Project
+// Identity + project-scoped memory + the active document's text.
+function buildProjectContext(activeNote: { content?: string } | null): string | undefined {
+  const parts: string[] = [];
+
+  const meta = useWorkspaceStore.getState().projectMeta;
+  if (meta) {
+    const lines: string[] = [];
+    if (meta.mission.trim()) lines.push(`Mission: ${meta.mission.trim()}`);
+    if (meta.tech_stack.trim()) lines.push(`Tech Stack: ${meta.tech_stack.trim()}`);
+    if (meta.architecture.trim()) lines.push(`Architecture: ${meta.architecture.trim()}`);
+    if (meta.coding_style.trim()) lines.push(`Coding Style: ${meta.coding_style.trim()}`);
+    if (meta.current_milestone.trim()) lines.push(`Current Milestone: ${meta.current_milestone.trim()}`);
+    if (meta.priority.trim()) lines.push(`Priority: ${meta.priority.trim()}`);
+    if (meta.known_problems.trim()) lines.push(`Known Problems: ${meta.known_problems.trim()}`);
+    if (lines.length > 0) {
+      parts.push(`--- PROJECT IDENTITY (context every chat session starts with) ---\n${lines.join('\n')}\n--- END ---`);
+    }
+  }
+
+  const memContext = useAgentMemoryStore.getState().getContextForAgent();
+  if (memContext) parts.push(memContext);
+
+  const noteText = activeNote?.content?.replace(/<[^>]*>/g, '').trim() ?? '';
+  if (noteText) parts.push(`--- ACTIVE DOCUMENT ---\n${noteText.slice(0, 4000)}\n--- END ---`);
+
+  return parts.length > 0 ? parts.join('\n\n') : undefined;
+}
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Ico = {
   close: () => (
@@ -183,7 +212,18 @@ export default function AIPanel() {
     const unsubDone = onEvent<{ session_id: string }>('llm:done', () => {
       setChatLoading(false);
     });
-    return () => { unsub(); unsubDone(); };
+    const unsubError = onEvent<{ session_id: string; message: string }>('llm:error', ({ message }) => {
+      setChatLoading(false);
+      setChatMessages(prev => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last && last.role === 'ai') {
+          updated[updated.length - 1] = { role: 'ai', text: `Error: ${message || 'LLM request failed'}` };
+        }
+        return updated;
+      });
+    });
+    return () => { unsub(); unsubDone(); unsubError(); };
   }, []);
 
   const sendChatMessage = async () => {
@@ -198,8 +238,7 @@ export default function AIPanel() {
       if (!useChatStore.getState().activeSessionId && activeWorkspaceId) {
         await createSession(activeWorkspaceId, activeProjectId ?? '');
       }
-      const noteContext = activeNote?.content?.replace(/<[^>]*>/g, '') ?? '';
-      await sendMessage(text, noteContext || undefined);
+      await sendMessage(text, buildProjectContext(activeNote));
     } catch (err: any) {
       setChatLoading(false);
       setChatMessages(prev => [

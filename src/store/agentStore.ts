@@ -48,9 +48,10 @@ interface AgentState {
   loading: boolean;
 
   init: () => () => void;
-  startAgent: (goal: string, workspacePath: string) => Promise<void>;
+  startAgent: (goal: string, workspacePath: string, projectId?: string) => Promise<void>;
   stopAgent: () => Promise<void>;
   approveAction: () => Promise<void>;
+  denyAction: () => Promise<void>;
   clearState: () => void;
 }
 
@@ -197,6 +198,17 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       set({ status: 'failed' });
     });
 
+    const unsubBlocked = onEvent<{ run_id: string; action_id: string; reason: string }>(
+      'agent:blocked',
+      (payload) => {
+        set({
+          status: 'blocked',
+          blockedActionId: payload.action_id,
+          blockedReason: payload.reason,
+        });
+      }
+    );
+
     return () => {
       unsubStarted();
       unsubAction();
@@ -204,13 +216,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       unsubTaskUpdate();
       unsubCompleted();
       unsubFailed();
+      unsubBlocked();
     };
   },
 
-  startAgent: async (goal: string, workspacePath: string) => {
+  startAgent: async (goal: string, workspacePath: string, projectId?: string) => {
     set({ loading: true, status: 'planning' });
     try {
-      const runId = await api.agentStart(goal, workspacePath);
+      const runId = await api.agentStart(goal, workspacePath, projectId);
       set({ runId, goal, status: 'running', loading: false });
     } catch (err: any) {
       set({ status: 'failed', loading: false });
@@ -231,6 +244,15 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     if (!actionId) return;
     try {
       await api.agentApprove(actionId);
+      set({ blockedActionId: null, blockedReason: null, status: 'running' });
+    } catch {}
+  },
+
+  denyAction: async () => {
+    const actionId = get().blockedActionId;
+    if (!actionId) return;
+    try {
+      await api.agentDeny(actionId);
       set({ blockedActionId: null, blockedReason: null, status: 'running' });
     } catch {}
   },

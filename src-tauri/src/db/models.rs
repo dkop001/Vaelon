@@ -47,6 +47,7 @@ pub struct Project {
     pub name: String,
     pub description: String,
     pub color: String,
+    pub path: String,
     pub archived: bool,
     pub created_at: String,
     pub updated_at: String,
@@ -61,11 +62,27 @@ impl Project {
             name: name.into(),
             description: String::new(),
             color: "#6366f1".into(),
+            path: String::new(),
             archived: false,
             created_at: ts.clone(),
             updated_at: ts,
         }
     }
+}
+
+// ── Project Meta (Identity) ────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectMeta {
+    pub project_id: String,
+    pub mission: String,
+    pub tech_stack: String,
+    pub architecture: String,
+    pub coding_style: String,
+    pub current_milestone: String,
+    pub priority: String,
+    pub known_problems: String,
+    pub updated_at: String,
 }
 
 // ── Note ───────────────────────────────────────────────────────────────────
@@ -295,4 +312,75 @@ pub struct GraphSnapshot {
     pub nodes: Vec<GraphNode>,
     pub edges: Vec<GraphEdge>,
     pub scanned_at: String,
+}
+
+// ── Timeline Event (Phase 3) ───────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimelineEvent {
+    pub id: String,
+    pub workspace_id: String,
+    pub kind: String,
+    pub payload: String,
+    pub title: String,
+    pub description: String,
+    pub created_at: String,
+}
+
+impl TimelineEvent {
+    pub fn new(
+        workspace_id: impl Into<String>,
+        kind: impl Into<String>,
+        title: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: new_id(),
+            workspace_id: workspace_id.into(),
+            kind: kind.into(),
+            payload: "{}".into(),
+            title: title.into(),
+            description: description.into(),
+            created_at: now_str(),
+        }
+    }
+}
+
+// ── Agent Memory (Phase 4) ─────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryEntry {
+    pub id: String,
+    pub project_id: String,
+    pub workspace_id: String,
+    pub r#type: String,
+    pub key: String,
+    pub value: String,
+    pub context: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl MemoryEntry {
+    pub fn new(
+        project_id: impl Into<String>,
+        workspace_id: impl Into<String>,
+        r#type: impl Into<String>,
+        key: impl Into<String>,
+        value: impl Into<String>,
+        context: impl Into<String>,
+    ) -> Self {
+        let ts = now_str();
+        Self {
+            id: new_id(),
+            project_id: project_id.into(),
+            workspace_id: workspace_id.into(),
+            r#type: r#type.into(),
+            key: key.into(),
+            value: value.into(),
+            context: context.into(),
+            created_at: ts.clone(),
+            updated_at: ts,
+        }
+    }
 }

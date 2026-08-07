@@ -9,6 +9,8 @@ export interface BackgroundServices {
   agent: 'inactive' | 'active' | 'error' | 'starting';
 }
 
+export type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline';
+
 interface AppState {
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
@@ -23,8 +25,8 @@ interface AppState {
   cmdOpen: boolean;
   openCmd: () => void;
   closeCmd: () => void;
-  activeView: 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline';
-  setActiveView: (view: any) => void;
+  activeView: ActiveView;
+  setActiveView: (view: ActiveView) => void;
   sidebarMode: 'nav' | 'chatHistory';
   setSidebarMode: (mode: 'nav' | 'chatHistory') => void;
   activeMode: 'knowledge' | 'agent';

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useDocumentStore, Document } from '../../store/noteStore';
 import { useAppStore } from '../../store/appStore';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 import { DocumentType } from '../../store/noteStore';
 import RichEditor, { RichEditorHandle } from './RichEditor';
 
@@ -162,8 +163,9 @@ interface Props {
 }
 
 export default function DocumentWorkspace({ onStatsChange }: Props) {
-  const { documents, activeDocumentId, updateDocument, deleteDocument, togglePin, addTag, removeTag } = useDocumentStore();
+  const { documents, activeDocumentId, updateDocument, deleteDocument, togglePin, addTag, removeTag, createDocument } = useDocumentStore();
   const { openRightPanel } = useAppStore();
+  const { activeWorkspaceId, activeProjectId } = useWorkspaceStore();
 
   const activeDocument = documents.find(d => d.id === activeDocumentId) ?? null;
 
@@ -181,7 +183,17 @@ export default function DocumentWorkspace({ onStatsChange }: Props) {
       <div className="empty-state animate-fade-in">
         <div className="empty-state-icon"><IconDocument /></div>
         <div className="empty-state-title">No document selected</div>
-        <div className="empty-state-desc">Select a document from the sidebar or create a new one to start writing.</div>
+        <div className="empty-state-desc">Pick a document from the sidebar or create a new one to start writing.</div>
+        <button
+          className="btn btn-primary"
+          onClick={async () => {
+            if (activeWorkspaceId && activeProjectId) {
+              await createDocument(activeWorkspaceId, activeProjectId, 'Untitled Document', 'knowledge');
+            }
+          }}
+        >
+          New Document
+        </button>
       </div>
     );
   }

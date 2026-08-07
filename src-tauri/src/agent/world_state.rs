@@ -107,6 +107,7 @@ pub struct WorldState {
     pub file_index: HashMap<String, FileEntry>,
     pub symbol_graph: SymbolGraph,
     pub events: Vec<AgentEvent>,
+    pub memory_context: String,
 }
 
 impl WorldState {
@@ -130,6 +131,7 @@ impl WorldState {
             file_index: HashMap::new(),
             symbol_graph: SymbolGraph { symbols: HashMap::new() },
             events: vec![],
+            memory_context: String::new(),
         }
     }
 
@@ -155,6 +157,7 @@ impl WorldState {
             current_focus: &'a str,
             file_index: &'a HashMap<String, FileEntry>,
             symbol_graph: &'a SymbolGraph,
+            memory_context: &'a str,
         }
         serde_json::to_string_pretty(&PlannerPayload {
             goal: &self.goal,
@@ -174,6 +177,7 @@ impl WorldState {
             current_focus: &self.current_focus,
             file_index: &self.file_index,
             symbol_graph: &self.symbol_graph,
+            memory_context: &self.memory_context,
         }).unwrap_or_default()
     }
 

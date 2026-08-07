@@ -118,7 +118,7 @@ pub fn scan_workspace(pool: &DbPool, workspace_id: &str, workspace_path: &str) -
             .unwrap_or_default();
 
         let content = std::fs::read_to_string(&full).unwrap_or_default();
-        let (symbols, imports, _functions) = extract_symbols(&content, &ext);
+        let (symbols, imports, functions) = extract_symbols(&content, &ext);
 
         let file_id = node_id(&workspace_id, &[NODE_FILE, rel]);
         file_ids.insert(rel.clone(), file_id.clone());
@@ -139,6 +139,19 @@ pub fn scan_workspace(pool: &DbPool, workspace_id: &str, workspace_path: &str) -
             created_at: now_str(),
             updated_at: now_str(),
         });
+
+        // Keep the file_index table in sync (Phase 3: background indexer).
+        {
+            let hash = crate::agent::world_state::content_hash(&content);
+            let summary = crate::agent::world_state::generate_file_summary(
+                rel, &symbols, &imports, &functions,
+            );
+            let _ = queries::file_index_upsert(
+                pool, &workspace_id, rel, &hash,
+                &symbols, &imports, &functions, &summary,
+                content.len() as i64,
+            );
+        }
 
         // contains: nearest directory -> file
         if let Some(parent) = Path::new(rel).parent() {

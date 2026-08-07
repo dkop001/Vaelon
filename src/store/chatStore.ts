@@ -76,9 +76,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     );
 
+    const unsubError = onEvent<{ session_id: string; message: string }>(
+      'llm:error',
+      (payload) => {
+        const { session_id, message } = payload;
+        if (session_id === get().activeSessionId) {
+          set({ streamingSessionId: null, error: message || 'LLM request failed' });
+        }
+      }
+    );
+
     return () => {
       unsubChunk();
       unsubDone();
+      unsubError();
     };
   },
 

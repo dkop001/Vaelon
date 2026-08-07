@@ -40,12 +40,31 @@ pub fn workspace_delete(pool: &DbPool, id: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn workspace_by_path(pool: &DbPool, path: &str) -> Result<Option<Workspace>> {
+    let conn = pool.lock().unwrap();
+    let mut stmt = conn.prepare(
+        "SELECT id, name, path, description, created_at, updated_at
+         FROM workspaces WHERE path = ?1 LIMIT 1"
+    )?;
+    let mut rows = stmt.query_map(params![path], |r| {
+        Ok(Workspace {
+            id: r.get(0)?,
+            name: r.get(1)?,
+            path: r.get(2)?,
+            description: r.get(3)?,
+            created_at: r.get(4)?,
+            updated_at: r.get(5)?,
+        })
+    })?;
+    Ok(rows.next().and_then(|r| r.ok()))
+}
+
 // ── Projects ──────────────────────────────────────────────────────────────
 
 pub fn project_list(pool: &DbPool, workspace_id: &str) -> Result<Vec<Project>> {
     let conn = pool.lock().unwrap();
     let mut stmt = conn.prepare(
-        "SELECT id, workspace_id, name, description, color, archived, created_at, updated_at
+        "SELECT id, workspace_id, name, description, color, path, archived, created_at, updated_at
          FROM projects WHERE workspace_id = ?1 ORDER BY created_at"
     )?;
     let rows = stmt.query_map(params![workspace_id], |r| {
@@ -55,9 +74,10 @@ pub fn project_list(pool: &DbPool, workspace_id: &str) -> Result<Vec<Project>> {
             name: r.get(2)?,
             description: r.get(3)?,
             color: r.get(4)?,
-            archived: r.get::<_, i64>(5)? != 0,
-            created_at: r.get(6)?,
-            updated_at: r.get(7)?,
+            path: r.get(5)?,
+            archived: r.get::<_, i64>(6)? != 0,
+            created_at: r.get(7)?,
+            updated_at: r.get(8)?,
         })
     })?;
     Ok(rows.filter_map(|r| r.ok()).collect())
@@ -66,9 +86,9 @@ pub fn project_list(pool: &DbPool, workspace_id: &str) -> Result<Vec<Project>> {
 pub fn project_create(pool: &DbPool, p: &Project) -> Result<()> {
     let conn = pool.lock().unwrap();
     conn.execute(
-        "INSERT INTO projects (id, workspace_id, name, description, color, archived, created_at, updated_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
-        params![p.id, p.workspace_id, p.name, p.description, p.color, p.archived as i64, p.created_at, p.updated_at],
+        "INSERT INTO projects (id, workspace_id, name, description, color, path, archived, created_at, updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+        params![p.id, p.workspace_id, p.name, p.description, p.color, p.path, p.archived as i64, p.created_at, p.updated_at],
     )?;
     Ok(())
 }
@@ -76,6 +96,82 @@ pub fn project_create(pool: &DbPool, p: &Project) -> Result<()> {
 pub fn project_delete(pool: &DbPool, id: &str) -> Result<()> {
     let conn = pool.lock().unwrap();
     conn.execute("DELETE FROM projects WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+/// Update a project's mutable fields (name, description, color, path, archived).
+pub fn project_update(pool: &DbPool, p: &Project) -> Result<()> {
+    let conn = pool.lock().unwrap();
+    conn.execute(
+        "UPDATE projects SET name = ?1, description = ?2, color = ?3, path = ?4, archived = ?5, updated_at = ?6
+         WHERE id = ?7",
+        params![p.name, p.description, p.color, p.path, p.archived as i64, p.updated_at, p.id],
+    )?;
+    Ok(())
+}
+
+pub fn project_get(pool: &DbPool, id: &str) -> Result<Option<Project>> {
+    let conn = pool.lock().unwrap();
+    let mut stmt = conn.prepare(
+        "SELECT id, workspace_id, name, description, color, path, archived, created_at, updated_at
+         FROM projects WHERE id = ?1 LIMIT 1"
+    )?;
+    let mut rows = stmt.query_map(params![id], |r| {
+        Ok(Project {
+            id: r.get(0)?,
+            workspace_id: r.get(1)?,
+            name: r.get(2)?,
+            description: r.get(3)?,
+            color: r.get(4)?,
+            path: r.get(5)?,
+            archived: r.get::<_, i64>(6)? != 0,
+            created_at: r.get(7)?,
+            updated_at: r.get(8)?,
+        })
+    })?;
+    Ok(rows.next().and_then(|r| r.ok()))
+}
+
+// ── Project Meta (Identity) ─────────────────────────────────────────────────
+
+pub fn project_meta_get(pool: &DbPool, project_id: &str) -> Result<Option<ProjectMeta>> {
+    let conn = pool.lock().unwrap();
+    let mut stmt = conn.prepare(
+        "SELECT project_id, mission, tech_stack, architecture, coding_style,
+                current_milestone, priority, known_problems, updated_at
+         FROM project_meta WHERE project_id = ?1 LIMIT 1"
+    )?;
+    let mut rows = stmt.query_map(params![project_id], |r| {
+        Ok(ProjectMeta {
+            project_id: r.get(0)?,
+            mission: r.get(1)?,
+            tech_stack: r.get(2)?,
+            architecture: r.get(3)?,
+            coding_style: r.get(4)?,
+            current_milestone: r.get(5)?,
+            priority: r.get(6)?,
+            known_problems: r.get(7)?,
+            updated_at: r.get(8)?,
+        })
+    })?;
+    Ok(rows.next().and_then(|r| r.ok()))
+}
+
+pub fn project_meta_set(pool: &DbPool, m: &ProjectMeta) -> Result<()> {
+    let conn = pool.lock().unwrap();
+    let ts = chrono::Utc::now().naive_utc().format("%Y-%m-%dT%H:%M:%S").to_string();
+    conn.execute(
+        "INSERT INTO project_meta (project_id, mission, tech_stack, architecture, coding_style,
+                                   current_milestone, priority, known_problems, updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
+         ON CONFLICT(project_id) DO UPDATE SET
+           mission=excluded.mission, tech_stack=excluded.tech_stack,
+           architecture=excluded.architecture, coding_style=excluded.coding_style,
+           current_milestone=excluded.current_milestone, priority=excluded.priority,
+           known_problems=excluded.known_problems, updated_at=excluded.updated_at",
+        params![m.project_id, m.mission, m.tech_stack, m.architecture, m.coding_style,
+                m.current_milestone, m.priority, m.known_problems, ts],
+    )?;
     Ok(())
 }
 
@@ -371,4 +467,194 @@ pub fn graph_snapshot(pool: &DbPool, workspace_id: &str) -> Result<GraphSnapshot
         edges,
         scanned_at: chrono::Utc::now().naive_utc().format("%Y-%m-%dT%H:%M:%S").to_string(),
     })
+}
+
+// ── Timeline (Phase 3) ─────────────────────────────────────────────────────
+
+pub fn timeline_insert(pool: &DbPool, event: &TimelineEvent) -> Result<()> {
+    let conn = pool.lock().unwrap();
+    conn.execute(
+        "INSERT INTO timeline_events (id, workspace_id, kind, payload, title, description, created_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7)",
+        params![
+            event.id, event.workspace_id, event.kind, event.payload,
+            event.title, event.description, event.created_at
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn timeline_query(
+    pool: &DbPool,
+    workspace_id: &str,
+    since: Option<&str>,
+    kinds: Option<&[String]>,
+) -> Result<Vec<TimelineEvent>> {
+    let conn = pool.lock().unwrap();
+    let mut sql = String::from(
+        "SELECT id, workspace_id, kind, payload, title, description, created_at
+         FROM timeline_events WHERE workspace_id = ?1"
+    );
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(workspace_id.to_string())];
+
+    if let Some(since) = since {
+        sql.push_str(" AND created_at >= ?");
+        params.push(Box::new(since.to_string()));
+    }
+    if let Some(kinds) = kinds {
+        if !kinds.is_empty() {
+            let placeholders: Vec<String> = (0..kinds.len()).map(|i| format!("?{}", i + 2)).collect();
+            sql.push_str(&format!(" AND kind IN ({})", placeholders.join(",")));
+            for k in kinds {
+                params.push(Box::new(k.clone()));
+            }
+        }
+    }
+    sql.push_str(" ORDER BY created_at DESC LIMIT 200");
+
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(params.iter()), |r| {
+        Ok(TimelineEvent {
+            id: r.get(0)?,
+            workspace_id: r.get(1)?,
+            kind: r.get(2)?,
+            payload: r.get(3)?,
+            title: r.get(4)?,
+            description: r.get(5)?,
+            created_at: r.get(6)?,
+        })
+    })?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+// ── File Index (Phase 3) ───────────────────────────────────────────────────
+
+/// Upsert a single file's index entry.
+pub fn file_index_upsert(
+    pool: &DbPool,
+    workspace_id: &str,
+    path: &str,
+    hash: &str,
+    symbols: &[String],
+    imports: &[String],
+    functions: &[String],
+    summary: &str,
+    size: i64,
+) -> Result<()> {
+    let conn = pool.lock().unwrap();
+    let symbols_json = serde_json::to_string(symbols)?;
+    let imports_json = serde_json::to_string(imports)?;
+    let functions_json = serde_json::to_string(functions)?;
+    let ts = chrono::Utc::now().naive_utc().format("%Y-%m-%dT%H:%M:%S").to_string();
+    conn.execute(
+        "INSERT INTO file_index
+         (id, workspace_id, path, hash, symbols, imports, functions, summary, last_modified, size, created_at, updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?11)
+         ON CONFLICT(workspace_id, path) DO UPDATE SET
+           hash=excluded.hash, symbols=excluded.symbols, imports=excluded.imports,
+           functions=excluded.functions, summary=excluded.summary,
+           last_modified=excluded.last_modified, size=excluded.size, updated_at=excluded.updated_at",
+        params![
+            uuid::Uuid::new_v4().to_string(), workspace_id, path, hash,
+            symbols_json, imports_json, functions_json, summary, ts, size
+        ],
+    )?;
+    Ok(())
+}
+
+/// Remove a file's index entry (deleted files).
+pub fn file_index_delete(pool: &DbPool, workspace_id: &str, path: &str) -> Result<()> {
+    let conn = pool.lock().unwrap();
+    conn.execute(
+        "DELETE FROM file_index WHERE workspace_id = ?1 AND path = ?2",
+        params![workspace_id, path],
+    )?;
+    Ok(())
+}
+
+// ── Agent Memory (Phase 4) ─────────────────────────────────────────────────
+
+fn parse_memory(r: &rusqlite::Row) -> rusqlite::Result<MemoryEntry> {
+    Ok(MemoryEntry {
+        id: r.get(0)?,
+        project_id: r.get(1)?,
+        workspace_id: r.get(2)?,
+        r#type: r.get(3)?,
+        key: r.get(4)?,
+        value: r.get(5)?,
+        context: r.get(6)?,
+        created_at: r.get(7)?,
+        updated_at: r.get(8)?,
+    })
+}
+
+/// List memories for a project (optionally filtered by type).
+pub fn memory_list(
+    pool: &DbPool,
+    workspace_id: &str,
+    project_id: Option<&str>,
+    r#type: Option<&str>,
+) -> Result<Vec<MemoryEntry>> {
+    let conn = pool.lock().unwrap();
+    let mut sql = String::from(
+        "SELECT id, project_id, workspace_id, type, key, value, context, created_at, updated_at
+         FROM agent_memories WHERE workspace_id = ?1"
+    );
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(workspace_id.to_string())];
+    if let Some(pid) = project_id {
+        sql.push_str(" AND project_id = ?");
+        params.push(Box::new(pid.to_string()));
+    }
+    if let Some(t) = r#type {
+        sql.push_str(" AND type = ?");
+        params.push(Box::new(t.to_string()));
+    }
+    sql.push_str(" ORDER BY updated_at DESC");
+
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(params.iter()), parse_memory)?;
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+/// Insert or update a memory. If a memory with the same (workspace, project,
+/// type, key) exists, it is updated in place; otherwise a new row is created.
+pub fn memory_upsert(pool: &DbPool, m: &MemoryEntry) -> Result<MemoryEntry> {
+    let conn = pool.lock().unwrap();
+    let ts = chrono::Utc::now().naive_utc().format("%Y-%m-%dT%H:%M:%S").to_string();
+    conn.execute(
+        "INSERT INTO agent_memories (id, project_id, workspace_id, type, key, value, context, created_at, updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
+         ON CONFLICT(workspace_id, project_id, type, key) DO UPDATE SET
+           value=excluded.value, context=excluded.context, updated_at=excluded.updated_at",
+        params![
+            m.id, m.project_id, m.workspace_id, m.r#type, m.key, m.value,
+            m.context, ts, ts
+        ],
+    )?;
+    // Fetch the stored row so `id` reflects the winner of the upsert.
+    let mut stmt = conn.prepare(
+        "SELECT id, project_id, workspace_id, type, key, value, context, created_at, updated_at
+         FROM agent_memories WHERE workspace_id = ?1 AND project_id = ?2 AND type = ?3 AND key = ?4"
+    )?;
+    let row = stmt.query_row(
+        params![m.workspace_id, m.project_id, m.r#type, m.key],
+        parse_memory,
+    )?;
+    Ok(row)
+}
+
+pub fn memory_update(pool: &DbPool, id: &str, value: &str, context: Option<&str>) -> Result<()> {
+    let conn = pool.lock().unwrap();
+    let ts = chrono::Utc::now().naive_utc().format("%Y-%m-%dT%H:%M:%S").to_string();
+    conn.execute(
+        "UPDATE agent_memories SET value = ?1, context = COALESCE(?2, context), updated_at = ?3 WHERE id = ?4",
+        params![value, context, ts, id],
+    )?;
+    Ok(())
+}
+
+pub fn memory_delete(pool: &DbPool, id: &str) -> Result<()> {
+    let conn = pool.lock().unwrap();
+    conn.execute("DELETE FROM agent_memories WHERE id = ?1", params![id])?;
+    Ok(())
 }

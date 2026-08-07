@@ -124,7 +124,7 @@ interface BuildCommandsProps {
   openRightPanel: (tab?: 'chat' | 'summary') => void;
   toggleTheme: () => void;
   setActiveMode: (mode: 'knowledge' | 'agent') => void;
-  startAgent: (goal: string, workspacePath: string) => Promise<void>;
+  startAgent: (goal: string, workspacePath: string, projectId?: string) => Promise<void>;
 }
 
 function buildCommands({
@@ -206,7 +206,7 @@ function buildCommands({
 
     { id: 'ai-chat', label: 'Chat with AI', sub: 'Ask about your project', Icon: IconChat, group: 'AI', action: () => openRightPanel('chat') },
     { id: 'ai-summarize', label: 'Summarize Document', sub: 'AI summary of active document', Icon: IconAI, group: 'AI', action: () => openRightPanel('summary') },
-    { id: 'ai-agent', label: 'Run Agent', sub: 'Start autonomous coding agent', Icon: IconAgent, group: 'AI', kbd: ['⌘', '⇧', 'A'], action: () => { setActiveMode('agent'); const ws = useWorkspaceStore.getState(); startAgent('', ws.activeWorkspaceId ?? '.'); } },
+    { id: 'ai-agent', label: 'Run Agent', sub: 'Start autonomous coding agent', Icon: IconAgent, group: 'AI', kbd: ['⌘', '⇧', 'A'], action: () => { setActiveMode('agent'); const ws = useWorkspaceStore.getState(); startAgent('', ws.activeWorkspaceId ?? '.', ws.activeProjectId ?? undefined); } },
     { id: 'toggle-theme', label: 'Toggle Dark / Light', sub: 'Switch color theme', Icon: IconTheme, group: 'Appearance', kbd: ['⌘', '⇧', 'L'], action: toggleTheme },
     { id: 'mode-knowledge', label: 'Knowledge Mode', sub: 'Documents, research, planning', Icon: IconDocument, group: 'Mode', action: () => setActiveMode('knowledge') },
     { id: 'mode-agent', label: 'Agent Mode', sub: 'Autonomous coding agent', Icon: IconAgent, group: 'Mode', action: () => setActiveMode('agent') },

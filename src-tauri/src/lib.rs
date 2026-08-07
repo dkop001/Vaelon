@@ -8,6 +8,7 @@ pub mod fs;
 pub mod graph;
 pub mod llm;
 pub mod rag;
+pub mod services;
 pub mod terminal;
 
 use commands::AppState;
@@ -15,6 +16,7 @@ use db::open;
 use llm::LlmSettings;
 use std::sync::{Arc, Mutex};
 use agent::AgentManager;
+use services::ServicesManager;
 use terminal::TerminalManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -49,6 +51,7 @@ pub fn run() {
         agent_manager: Arc::new(AgentManager::new()),
         terminal_manager: Arc::new(TerminalManager::new()),
         fs_watchers: Arc::new(Mutex::new(vec![])),
+        services: Arc::new(ServicesManager::new()),
     };
 
     tauri::Builder::default()
@@ -66,6 +69,9 @@ pub fn run() {
             commands::project_list_cmd,
             commands::project_create_cmd,
             commands::project_delete_cmd,
+            commands::project_update_cmd,
+            commands::project_meta_get_cmd,
+            commands::project_meta_set_cmd,
             // Notes
             commands::note_list_cmd,
             commands::note_get_cmd,
@@ -73,6 +79,7 @@ pub fn run() {
             commands::note_update_cmd,
             commands::note_delete_cmd,
             commands::note_search_cmd,
+            commands::note_semantic_search_cmd,
             // Chat
             commands::chat_session_list_cmd,
             commands::chat_session_create_cmd,
@@ -100,6 +107,7 @@ pub fn run() {
             commands::agent_start_cmd,
             commands::agent_stop_cmd,
             commands::agent_approve_cmd,
+            commands::agent_deny_cmd,
             // Config
             commands::config_get_cmd,
             commands::config_set_cmd,
@@ -108,6 +116,15 @@ pub fn run() {
             // Workspace Graph
             commands::graph_scan_cmd,
             commands::graph_query_cmd,
+            // Background Services
+            commands::services_start_cmd,
+            commands::services_status_cmd,
+            commands::timeline_query_cmd,
+            // Agent Memory
+            commands::memory_list_cmd,
+            commands::memory_set_cmd,
+            commands::memory_update_cmd,
+            commands::memory_delete_cmd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Vaelon");

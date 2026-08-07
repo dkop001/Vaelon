@@ -1,5 +1,4 @@
 import { useAppStore } from '../../store/appStore';
-import { useAuth } from '../../context/AuthContext';
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const IconMenu = () => (
@@ -33,11 +32,6 @@ const IconSettings = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
     <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.3"/>
     <path d="M7 1v1M7 12v1M1 7H2M12 7h1M2.34 2.34l.7.7M10.96 10.96l.7.7M11.66 2.34l-.7.7M3.04 10.96l-.7.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-  </svg>
-);
-const IconLogOut = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path d="M5 2H2.5A1.5 1.5 0 0 0 1 3.5v7A1.5 1.5 0 0 0 2.5 12H5M9 4l3 3-3 3M13 7H5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 const IconVaelon = () => (
@@ -94,9 +88,6 @@ export default function TopBar({ documentTitle, onSettingsOpen }: TopBarProps) {
     rightPanelOpen, toggleRightPanel, syncState, activeView,
     toggleMobileSidebar, setActiveMode, activeMode,
   } = useAppStore();
-  const { user, signOut } = useAuth();
-
-  const initials = user?.email?.[0]?.toUpperCase() ?? 'U';
 
   return (
     <header className="topbar workspace-topbar" role="banner">
@@ -205,23 +196,6 @@ export default function TopBar({ documentTitle, onSettingsOpen }: TopBarProps) {
 
         {/* Sync badge */}
         <SyncBadge state={syncState} />
-
-        {/* User menu */}
-        {user && (
-          <div
-            className="topbar-user"
-            title="Sign out"
-            onClick={signOut}
-            role="button"
-            tabIndex={0}
-            id="topbar-user"
-            onKeyDown={(e) => e.key === 'Enter' && signOut()}
-          >
-            <div className="topbar-avatar" aria-hidden="true">{initials}</div>
-            <span className="topbar-user-email">{user.email}</span>
-            <IconLogOut />
-          </div>
-        )}
       </div>
     </header>
   );

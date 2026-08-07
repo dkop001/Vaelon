@@ -6,7 +6,23 @@ use rusqlite::Connection;
 
 pub fn run(conn: &Connection) -> Result<()> {
     conn.execute_batch(SCHEMA)?;
+    migrate_columns(conn)?;
     seed_defaults(conn)?;
+    Ok(())
+}
+
+/// Add columns that were introduced after a table was first created.
+/// Idempotent — checks PRAGMA table_info before altering.
+fn migrate_columns(conn: &Connection) -> Result<()> {
+    // projects.path (Project-as-folder support)
+    let has_path: bool = conn
+        .prepare("PRAGMA table_info(projects)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .filter_map(|r| r.ok())
+        .any(|name| name == "path");
+    if !has_path {
+        conn.execute("ALTER TABLE projects ADD COLUMN path TEXT NOT NULL DEFAULT ''", [])?;
+    }
     Ok(())
 }
 
@@ -42,12 +58,30 @@ CREATE TABLE IF NOT EXISTS projects (
     name         TEXT NOT NULL,
     description  TEXT NOT NULL DEFAULT '',
     color        TEXT NOT NULL DEFAULT '#6366f1',
+    path         TEXT NOT NULL DEFAULT '',
     archived     INTEGER NOT NULL DEFAULT 0,
     created_at   TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_projects_workspace ON projects(workspace_id);
+
+-- ── Project Identity (Phase 1) ────────────────────────────────────────────
+-- Lightweight profile every subsystem reads before acting: mission, tech
+-- stack, architecture, coding style, current milestone, priorities, known
+-- problems. Injected into agent/chat/planner context on every run.
+CREATE TABLE IF NOT EXISTS project_meta (
+    project_id        TEXT PRIMARY KEY,
+    mission           TEXT NOT NULL DEFAULT '',
+    tech_stack        TEXT NOT NULL DEFAULT '',
+    architecture      TEXT NOT NULL DEFAULT '',
+    coding_style      TEXT NOT NULL DEFAULT '',
+    current_milestone TEXT NOT NULL DEFAULT '',
+    priority          TEXT NOT NULL DEFAULT '',
+    known_problems    TEXT NOT NULL DEFAULT '',
+    updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
 
 -- ── Notes ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS notes (
@@ -209,6 +243,39 @@ CREATE TABLE IF NOT EXISTS event_store (
 );
 CREATE INDEX IF NOT EXISTS idx_event_store_run ON event_store(run_id);
 CREATE INDEX IF NOT EXISTS idx_event_store_type ON event_store(event_type);
+
+-- ── Timeline Events (Phase 3) ─────────────────────────────────────────────
+-- Human-readable activity feed for Mission Control, written by background
+-- services (indexer, git watcher, builds watcher, agent).
+CREATE TABLE IF NOT EXISTS timeline_events (
+    id           TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL DEFAULT 'default',
+    kind         TEXT NOT NULL,
+    payload      TEXT NOT NULL DEFAULT '{}',
+    title        TEXT NOT NULL DEFAULT '',
+    description  TEXT NOT NULL DEFAULT '',
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_timeline_events_workspace ON timeline_events(workspace_id, created_at DESC);
+
+-- ── Agent Memory (Phase 4) ─────────────────────────────────────────────────
+-- Persistent per-project memory: architecture, patterns, coding style,
+-- tech stack, mistakes, decisions, completed tasks. Fed back into agent
+-- context so nothing needs re-prompting.
+CREATE TABLE IF NOT EXISTS agent_memories (
+    id           TEXT PRIMARY KEY,
+    project_id   TEXT NOT NULL DEFAULT '',
+    workspace_id TEXT NOT NULL DEFAULT 'default',
+    type         TEXT NOT NULL,
+    key          TEXT NOT NULL DEFAULT '',
+    value        TEXT NOT NULL,
+    context      TEXT NOT NULL DEFAULT '',
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_agent_memories_workspace ON agent_memories(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_agent_memories_project ON agent_memories(project_id, type);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_agent_memories_type_key ON agent_memories(workspace_id, project_id, type, key);
 
 -- ── File Index ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS file_index (

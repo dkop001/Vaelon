@@ -77,15 +77,21 @@ pub struct Planner;
 impl Planner {
     /// Plan the next action given the current world state.
     pub async fn plan_next(state: &Arc<Mutex<WorldState>>, settings: &LlmSettings) -> Result<Action> {
-        let world_json = {
+        let (world_json, memory) = {
             let ws = state.lock().await;
-            ws.to_planner_json()
+            (ws.to_planner_json(), ws.memory_context.clone())
+        };
+
+        let memory_block = if memory.is_empty() {
+            String::new()
+        } else {
+            format!("\n\nPERSISTENT PROJECT MEMORY (follow conventions you remember here):\n{}\n", memory)
         };
 
         let req = LlmRequest {
             messages: vec![
                 LlmMessage { role: "system".into(), content: SYSTEM_PROMPT.into() },
-                LlmMessage { role: "user".into(), content: format!("Current World State (JSON):\n{}", world_json) },
+                LlmMessage { role: "user".into(), content: format!("Current World State (JSON):\n{}{}", world_json, memory_block) },
             ],
             temperature: Some(0.2),
             max_tokens: Some(4096),
@@ -164,17 +170,23 @@ impl Planner {
         state: &Arc<Mutex<WorldState>>,
         settings: &LlmSettings,
     ) -> Result<Vec<TaskNode>> {
-        let world_json = {
+        let (world_json, memory) = {
             let ws = state.lock().await;
-            ws.to_planner_json()
+            (ws.to_planner_json(), ws.memory_context.clone())
+        };
+
+        let memory_block = if memory.is_empty() {
+            String::new()
+        } else {
+            format!("\n\nPERSISTENT PROJECT MEMORY (follow conventions you remember here):\n{}\n", memory)
         };
 
         let prompt = format!(
             "I need to decompose the following task into subtasks:\n\n\
              Task: {}\n\n\
-             Current World State:\n{}\n\n\
+             Current World State:\n{}\n{}\n\n\
              Respond with a JSON task expansion as described in the system prompt.",
-            description, world_json
+            description, world_json, memory_block
         );
 
         let req = LlmRequest {
@@ -343,15 +355,21 @@ impl Planner {
         state: &Arc<Mutex<WorldState>>,
         settings: &LlmSettings,
     ) -> Result<InitialPlan> {
-        let world_json = {
+        let (world_json, memory) = {
             let ws = state.lock().await;
-            ws.to_planner_json()
+            (ws.to_planner_json(), ws.memory_context.clone())
+        };
+
+        let memory_block = if memory.is_empty() {
+            String::new()
+        } else {
+            format!("\n\nPERSISTENT PROJECT MEMORY (follow conventions you remember here):\n{}\n", memory)
         };
 
         let req = LlmRequest {
             messages: vec![
                 LlmMessage { role: "system".into(), content: SYSTEM_PROMPT.into() },
-                LlmMessage { role: "user".into(), content: format!("Current World State (JSON):\n{}", world_json) },
+                LlmMessage { role: "user".into(), content: format!("Current World State (JSON):\n{}{}", world_json, memory_block) },
             ],
             temperature: Some(0.2),
             max_tokens: Some(4096),

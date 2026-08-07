@@ -77,10 +77,10 @@ export default function AgentMode() {
     status, goal, tasks, toolCalls,
     filesCreatedCount, filesModifiedCount, tasksTotal, errorCount,
     blockedReason,
-    startAgent, stopAgent, approveAction, clearState,
+    startAgent, stopAgent, approveAction, denyAction, clearState,
   } = useAgentStore();
 
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { activeWorkspaceId, activeProjectId } = useWorkspaceStore();
   const { notes, activeNoteId } = useNoteStore();
   const activeNote = notes.find(n => n.id === activeNoteId);
 
@@ -104,8 +104,8 @@ export default function AgentMode() {
     if (!text || isRunning) return;
     const workspacePath = activeWorkspaceId ?? '.';
     setInput('');
-    await startAgent(text, workspacePath);
-  }, [input, isRunning, activeWorkspaceId, startAgent]);
+    await startAgent(text, workspacePath, activeProjectId || undefined);
+  }, [input, isRunning, activeWorkspaceId, activeProjectId, startAgent]);
 
   const handleStop = useCallback(async () => {
     await stopAgent();
@@ -114,6 +114,10 @@ export default function AgentMode() {
   const handleApprove = useCallback(async () => {
     await approveAction();
   }, [approveAction]);
+
+  const handleDeny = useCallback(async () => {
+    await denyAction();
+  }, [denyAction]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -195,7 +199,7 @@ export default function AgentMode() {
                     <button className="agent-approve-btn" onClick={handleApprove}>
                       ✓ Approve
                     </button>
-                    <button className="agent-cmd-stop" onClick={handleStop} style={{ flex: 1 }}>
+                    <button className="agent-cmd-stop" onClick={handleDeny} style={{ flex: 1 }}>
                       ✕ Deny
                     </button>
                   </div>
