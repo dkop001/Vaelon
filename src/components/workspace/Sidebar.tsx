@@ -1,0 +1,312 @@
+import { useState, useEffect } from 'react';
+import { useAppStore } from '../../store/appStore';
+import { useWorkspaceStore } from '../../store/workspaceStore';
+import { useDocumentStore, Document } from '../../store/noteStore';
+import { api } from '../../ipc/client';
+import ChatHistoryPanel from './ChatHistoryPanel';
+
+// ── Inline SVGs ───────────────────────────────────────────────────────────
+const IconHome = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path d="M1.5 6.5 7 1.5l5.5 5V12a1 1 0 0 1-1 1H9v-3.5H5V13H2.5a1 1 0 0 1-1-1V6.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+  </svg>
+);
+const IconProjects = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <rect x="1.5" y="3" width="11" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <path d="M4.5 5.5h5M4.5 8h5M4.5 10.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+const IconKnowledge = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+const IconTasks = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path d="M2 3h10M2 7h10M2 11h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    <path d="M11 3v8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+  </svg>
+);
+const IconGit = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <circle cx="3" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <circle cx="11" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <circle cx="11" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <circle cx="3" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <path d="M4.5 3h5M4.5 11h5M3 4.5v5M11 4.5v5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+const IconBuilds = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path d="M2 11h10M5 11V5M9 11V5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    <path d="M5 5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+  </svg>
+);
+const IconTerminal = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+    <path d="M3.5 5L6 7 3.5 9M7 9h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+const IconSearch = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.3"/>
+    <path d="m9.5 9.5 3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+  </svg>
+);
+const IconChat = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path d="M1.5 2.5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5L2 12V8.5H2.5a1 1 0 0 1-1-1v-5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+  </svg>
+);
+const IconGraph = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <circle cx="3" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <circle cx="11" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <circle cx="3" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
+    <path d="M4.2 4.2 9.8 9.8M9.8 4.2 4.2 9.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+const IconFolder = () => (
+  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+    <path d="M1.5 3.5a1 1 0 0 1 1-1h2.5l1.5 1.5h4a1 1 0 0 1 1 1v4.5a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1v-6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+  </svg>
+);
+const IconFile = () => (
+  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+    <path d="M3 1h5.5L11 3.5V11.5A.5.5 0 0 1 10.5 12h-7.5A.5.5 0 0 1 2.5 11.5v-10A.5.5 0 0 1 3 1Z" stroke="currentColor" strokeWidth="1.2"/>
+    <path d="M8.5 1v2.5H11" stroke="currentColor" strokeWidth="1.2"/>
+  </svg>
+);
+const NAV = [
+  { id: 'home',       label: 'Mission Control', Icon: IconHome      },
+  { id: 'projects',   label: 'Projects',        Icon: IconProjects  },
+  { id: 'documents',  label: 'Knowledge',       Icon: IconKnowledge },
+  { id: 'graph',      label: 'Graph',           Icon: IconGraph     },
+  { id: 'tasks',      label: 'Tasks',           Icon: IconTasks     },
+  { id: 'git',        label: 'Git',             Icon: IconGit       },
+  { id: 'builds',     label: 'Builds',          Icon: IconBuilds    },
+  { id: 'timeline',   label: 'Timeline',        Icon: IconTerminal  },
+  { id: 'terminal',   label: 'Terminal',        Icon: IconTerminal  },
+  { id: 'chatHistory', label: 'Chat History',   Icon: IconChat      },
+  { id: 'search',     label: 'Search',          Icon: IconSearch    },
+];
+
+interface FileNode {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  gitStatus?: string;
+  children?: FileNode[];
+}
+
+function GitBadge({ status }: { status?: string }) {
+  if (!status) return null;
+  return <span className={`file-git-status ${status}`}>{status}</span>;
+}
+
+function FileRow({ node, depth, onOpen }: { node: FileNode; depth: number; onOpen: (path: string) => void }) {
+  const [open, setOpen] = useState(depth < 1 && node.is_dir);
+  if (node.is_dir) {
+    return (
+      <>
+        <div
+          className="sidebar-item"
+          style={{ paddingLeft: `calc(var(--sp-3) + ${depth * 14}px)` }}
+          onClick={() => setOpen((o) => !o)}
+          role="button"
+        >
+          <span className="sidebar-item-icon" style={{ opacity: 0.7 }}><IconFolder /></span>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+          <span style={{ fontSize: 9, color: 'var(--tx-disabled)' }}>{open ? '▾' : '▸'}</span>
+        </div>
+        {open && node.children?.map((child) => (
+          <FileRow key={child.path} node={child} depth={depth + 1} onOpen={onOpen} />
+        ))}
+      </>
+    );
+  }
+  return (
+    <div
+      className="sidebar-item"
+      style={{ paddingLeft: `calc(var(--sp-3) + ${depth * 14}px)` }}
+      onClick={() => onOpen(node.path)}
+      role="button"
+    >
+      <span className="sidebar-item-icon" style={{ opacity: 0.6 }}><IconFile /></span>
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+      <GitBadge status={node.gitStatus} />
+    </div>
+  );
+}
+
+interface SidebarProps {
+  onNewDocument: () => void;
+}
+
+export default function Sidebar({ onNewDocument }: SidebarProps) {
+  const { activeView, setActiveView, sidebarMode, setSidebarMode, backgroundServices, setActiveProjectPath } = useAppStore();
+  const { workspaces, activeWorkspaceId, selectWorkspace } = useWorkspaceStore();
+  const { documents, activeDocumentId, selectDocument } = useDocumentStore();
+  const [fileTree, setFileTree] = useState<FileNode[]>([]);
+  const [treeLoading, setTreeLoading] = useState(false);
+
+  const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);
+
+  // Load file tree for the active workspace
+  useEffect(() => {
+    if (!activeWs) {
+      setFileTree([]);
+      return;
+    }
+    setActiveProjectPath(activeWs.path);
+    setTreeLoading(true);
+    api
+      .fsList(activeWs.path)
+      .then((entries) => {
+        const build = (entries: { name: string; path: string; is_dir: boolean }[]): FileNode[] =>
+          entries
+            .filter((e) => !['node_modules', '.git', 'dist', '.next', 'target'].includes(e.name))
+            .sort((a, b) => Number(b.is_dir) - Number(a.is_dir))
+            .map((e) => ({ name: e.name, path: e.path, is_dir: e.is_dir, children: [] }));
+        setFileTree(build(entries));
+      })
+      .catch(() => setFileTree([]))
+      .finally(() => setTreeLoading(false));
+  }, [activeWs?.path, setActiveProjectPath]);
+
+  const handleNavClick = (id: string) => {
+    if (id === 'chatHistory') {
+      setSidebarMode('chatHistory');
+    } else {
+      setSidebarMode('nav');
+      setActiveView(id as any);
+    }
+  };
+
+  if (sidebarMode === 'chatHistory') {
+    return (
+      <aside className="sidebar workspace-sidebar" aria-label="Chat history" id="workspace-sidebar">
+        <ChatHistoryPanel />
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="sidebar workspace-sidebar" aria-label="Project Navigator" id="workspace-sidebar">
+      <nav className="sidebar-section" aria-label="Main navigation">
+        {NAV.map(({ id, label, Icon }) => {
+          const isActive = activeView === (id as string);
+          return (
+            <button
+              key={id}
+              className={`sidebar-item ${isActive ? 'active' : ''}`}
+              onClick={() => handleNavClick(id)}
+              id={`sidebar-nav-${id}`}
+            >
+              <span className="sidebar-item-icon"><Icon /></span>
+              {label}
+              {id === 'graph' && backgroundServices.indexer === 'active' && (
+                <span style={{ marginLeft: 'auto' }} className="live-badge active"><span className="dot" /></span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="sidebar-divider" />
+
+      {/* Active project header */}
+      <div style={{ padding: 'var(--sp-3) var(--sp-4)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div className="sidebar-label">Active Project</div>
+        <div className="pnav-project-item active">
+          <span className="sidebar-item-icon"><IconFolder /></span>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {activeWs?.name || 'No project open'}
+          </span>
+        </div>
+        {activeWs && <span style={{ fontSize: 9, color: 'var(--tx-disabled)', padding: '0 var(--sp-3)' }}>{activeWs.path}</span>}
+      </div>
+
+      {/* Project quick switcher */}
+      {workspaces.length > 1 && (
+        <>
+          <div style={{ padding: 'var(--sp-2) var(--sp-4)' }}>
+            <div className="sidebar-label">Workspaces</div>
+          </div>
+          <div style={{ padding: '0 var(--sp-2)' }}>
+            {workspaces.map((ws) => (
+              <div
+                key={ws.id}
+                className={`pnav-project-item ${ws.id === activeWorkspaceId ? 'active' : ''}`}
+                onClick={() => selectWorkspace(ws.id)}
+              >
+                <span className="sidebar-item-icon"><IconFolder /></span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ws.name}</span>
+                <span className="branch">main</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="sidebar-divider" />
+
+      {/* File tree */}
+      <div style={{ padding: 'var(--sp-2) var(--sp-4)' }}>
+        <div className="sidebar-label">Files</div>
+      </div>
+      <div className="sidebar-file-tree" role="list" aria-label="Project file tree">
+        {treeLoading && (
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '16px', color: 'var(--tx-tertiary)' }}>
+            <span>Indexing…</span>
+          </div>
+        )}
+        {!treeLoading && fileTree.length === 0 && (
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--tx-disabled)', padding: '8px 16px', lineHeight: 1.5 }}>
+            Open a project to browse its files. Files with{' '}
+            <span className="file-git-status M">M</span>
+            <span className="file-git-status U">U</span>
+            <span className="file-git-status A">A</span> show git status.
+          </p>
+        )}
+        {!treeLoading && fileTree.map((node) => (
+          <FileRow key={node.path} node={node} depth={0} onOpen={() => setActiveView('terminal')} />
+        ))}
+      </div>
+
+      {/* Recent documents */}
+      {documents.length > 0 && (
+        <>
+          <div className="sidebar-divider" />
+          <div style={{ padding: 'var(--sp-2) var(--sp-4)' }}>
+            <div className="sidebar-label">Documents</div>
+          </div>
+          <div className="sidebar-file-tree">
+            {documents.slice(0, 8).map((doc: Document) => (
+              <div
+                key={doc.id}
+                className={`sidebar-item ${doc.id === activeDocumentId ? 'active' : ''}`}
+                onClick={() => {
+                  selectDocument(doc.id);
+                  setActiveView('documents');
+                }}
+              >
+                <span className="sidebar-item-icon" style={{ opacity: 0.6 }}><IconFile /></span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title || 'Untitled'}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <footer className="sidebar-footer">
+        <button className="sidebar-version-tag" style={{ width: '100%', justifyContent: 'center' }} onClick={onNewDocument}>
+          <IconSearch /> Developer OS — v2
+        </button>
+      </footer>
+    </aside>
+  );
+}
