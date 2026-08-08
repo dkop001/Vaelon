@@ -211,18 +211,24 @@ impl AgentManager {
     }
 
     /// Start a new agent run. Spawns a Tokio task.
+    /// `context_override`, when provided (assembled by the frontend exactly like
+    /// Chat Mode), fully replaces the backend-assembled project context so Agent
+    /// Mode runs with the same grounding as Chat Mode (FR-5).
     pub fn start(
         &self,
         app: AppHandle,
         goal: String,
         workspace_path: String,
         project_id: Option<String>,
+        context_override: Option<String>,
+        capture: bool,
         db: DbPool,
         llm_settings: LlmSettings,
     ) -> String {
         let run_id = Uuid::new_v4().to_string();
         let mut world = WorldState::new(goal.clone(), workspace_path.clone());
-        world.memory_context = load_memory_context(&db, &workspace_path, project_id.as_deref());
+        world.memory_context = context_override
+            .unwrap_or_else(|| load_memory_context(&db, &workspace_path, project_id.as_deref()));
         let state = Arc::new(Mutex::new(world));
         self.runs.insert(run_id.clone(), state.clone());
         self.workers.insert(run_id.clone(), Worker::new());
@@ -255,6 +261,7 @@ impl AgentManager {
                 llm_settings,
                 pending_approvals,
                 project_id,
+                capture,
             ).await;
 
             match result {
@@ -307,6 +314,7 @@ async fn agent_loop(
     llm_settings: LlmSettings,
     pending_approvals: Arc<DashMap<String, tokio::sync::oneshot::Sender<()>>>,
     project_id: Option<String>,
+    capture: bool,
 ) -> Result<AgentCompletedEvent> {
     // Phase 1: Initial planning — decompose goal into task graph
     let mut graph = TaskGraph::new();
@@ -656,16 +664,23 @@ async fn agent_loop(
         }
     };
 
-    // Persist a completed-task memory so future runs know what was done.
-    {
+    // Close the memory loop: auto-save 0–3 candidate memories (opt-out).
+    // FR-1/FR-7: completed-tasks (agent-observed), mistakes (ai-inferred),
+    // decisions (ai-inferred). Emitted as `memory:candidates` for the review queue.
+    if capture {
         use crate::db::{models::MemoryEntry, queries};
         let ws = state.lock().await;
         let goal = ws.goal.clone();
+        let pid = project_id.clone().unwrap_or_default();
         let workspace_id = queries::workspace_by_path(&db, &ws.workspace_path)
             .ok()
             .flatten()
             .map(|w| w.id)
             .unwrap_or_else(|| "default".to_string());
+
+        let mut candidates: Vec<MemoryEntry> = Vec::new();
+
+        // 1. completed-tasks — what this run achieved (agent-observed).
         let summary_text = format!(
             "Goal: {}\nResult: {}\nFiles created: {}\nFiles modified: {}\nTasks completed: {}\nErrors: {}",
             goal,
@@ -675,19 +690,90 @@ async fn agent_loop(
             summary.tasks_total - summary.tasks_failed,
             summary.errors,
         );
-        let mem = MemoryEntry {
+        candidates.push(MemoryEntry {
             id: Uuid::new_v4().to_string(),
-            project_id: project_id.unwrap_or_default(),
-            workspace_id,
+            project_id: pid.clone(),
+            workspace_id: workspace_id.clone(),
             r#type: "completed-tasks".into(),
             key: goal.clone(),
             value: summary_text,
             context: String::new(),
+            source: "agent-observed".into(),
+            confidence: Some(0.95),
+            origin_session_id: run_id.clone(),
             created_at: String::new(),
             updated_at: String::new(),
-        };
-        if let Err(e) = queries::memory_upsert(&db, &mem) {
-            tracing::warn!("Failed to persist completion memory: {}", e);
+        });
+
+        // 2. mistakes — what went wrong so it isn't repeated (ai-inferred).
+        if !ws.failed.is_empty() || !ws.diagnostics.is_empty() {
+            let mut parts: Vec<String> = Vec::new();
+            if !ws.failed.is_empty() {
+                parts.push(format!("Failed tasks:\n{}", ws.failed.join("\n")));
+            }
+            if !ws.diagnostics.is_empty() {
+                let recent: Vec<&str> = ws.diagnostics.iter().take(6).map(|s| s.as_str()).collect();
+                parts.push(format!("Diagnostics:\n{}", recent.join("\n")));
+            }
+            candidates.push(MemoryEntry {
+                id: Uuid::new_v4().to_string(),
+                project_id: pid.clone(),
+                workspace_id: workspace_id.clone(),
+                r#type: "mistakes".into(),
+                key: goal.clone(),
+                value: parts.join("\n\n"),
+                context: String::new(),
+                source: "ai-inferred".into(),
+                confidence: Some(0.7),
+                origin_session_id: run_id.clone(),
+                created_at: String::new(),
+                updated_at: String::new(),
+            });
+        }
+
+        // 3. decisions — the approach taken (ai-inferred).
+        if !ws.thoughts.is_empty() {
+            let reasons: Vec<String> = ws
+                .thoughts
+                .iter()
+                .filter(|t| !t.reason.trim().is_empty())
+                .take(4)
+                .map(|t| t.reason.clone())
+                .collect();
+            if !reasons.is_empty() {
+                candidates.push(MemoryEntry {
+                    id: Uuid::new_v4().to_string(),
+                    project_id: pid.clone(),
+                    workspace_id: workspace_id.clone(),
+                    r#type: "decisions".into(),
+                    key: goal.clone(),
+                    value: reasons.join("\n"),
+                    context: String::new(),
+                    source: "ai-inferred".into(),
+                    confidence: Some(0.6),
+                    origin_session_id: run_id.clone(),
+                    created_at: String::new(),
+                    updated_at: String::new(),
+                });
+            }
+        }
+
+        // Persist each candidate (opt-out capture) and emit for the review queue.
+        let mut saved: Vec<MemoryEntry> = Vec::new();
+        for c in candidates {
+            if let Ok(entry) = queries::memory_upsert(&db, &c) {
+                saved.push(entry);
+            } else {
+                tracing::warn!("Failed to persist candidate memory: {}", c.key);
+            }
+        }
+        if !saved.is_empty() {
+            let _ = app.emit("memory:candidates", serde_json::json!({
+                "run_id": run_id,
+                "workspace_id": workspace_id,
+                "project_id": pid,
+                "entries": saved,
+            }));
         }
     }
 

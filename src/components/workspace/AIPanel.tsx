@@ -1,39 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useNoteStore } from '../../store/noteStore';
 import { useChatStore } from '../../store/chatStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useAgentMemoryStore } from '../../store/agentMemoryStore';
+import { buildProjectContext } from '../../lib/projectContext';
 import { api, onEvent, ProjectIntelligence } from '../../ipc/client';
-
-// Build the full project context sent with every chat message: Project
-// Identity + project-scoped memory + the active document's text.
-function buildProjectContext(activeNote: { content?: string } | null): string | undefined {
-  const parts: string[] = [];
-
-  const meta = useWorkspaceStore.getState().projectMeta;
-  if (meta) {
-    const lines: string[] = [];
-    if (meta.mission.trim()) lines.push(`Mission: ${meta.mission.trim()}`);
-    if (meta.tech_stack.trim()) lines.push(`Tech Stack: ${meta.tech_stack.trim()}`);
-    if (meta.architecture.trim()) lines.push(`Architecture: ${meta.architecture.trim()}`);
-    if (meta.coding_style.trim()) lines.push(`Coding Style: ${meta.coding_style.trim()}`);
-    if (meta.current_milestone.trim()) lines.push(`Current Milestone: ${meta.current_milestone.trim()}`);
-    if (meta.priority.trim()) lines.push(`Priority: ${meta.priority.trim()}`);
-    if (meta.known_problems.trim()) lines.push(`Known Problems: ${meta.known_problems.trim()}`);
-    if (lines.length > 0) {
-      parts.push(`--- PROJECT IDENTITY (context every chat session starts with) ---\n${lines.join('\n')}\n--- END ---`);
-    }
-  }
-
-  const memContext = useAgentMemoryStore.getState().getContextForAgent();
-  if (memContext) parts.push(memContext);
-
-  const noteText = activeNote?.content?.replace(/<[^>]*>/g, '').trim() ?? '';
-  if (noteText) parts.push(`--- ACTIVE DOCUMENT ---\n${noteText.slice(0, 4000)}\n--- END ---`);
-
-  return parts.length > 0 ? parts.join('\n\n') : undefined;
-}
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Ico = {
   close: () => (
@@ -157,6 +129,14 @@ export default function AIPanel() {
 
   // Agent memories
   const { memories, loadMemories } = useAgentMemoryStore();
+  const projectMeta = useWorkspaceStore((s) => s.projectMeta);
+
+  // FR-6: exactly what the model receives, kept live for the Context tab.
+  const projectCtx = useMemo(
+    () => buildProjectContext(activeNote),
+    [activeNote, projectMeta, memories]
+  );
+  const [ctxOpen, setCtxOpen] = useState(false);
 
   const activeWs = getActiveWorkspace();
 
@@ -235,10 +215,21 @@ export default function AIPanel() {
     setChatLoading(true);
 
     try {
-      if (!useChatStore.getState().activeSessionId && activeWorkspaceId) {
+      const sessionId = useChatStore.getState().activeSessionId;
+      if (!sessionId && activeWorkspaceId) {
         await createSession(activeWorkspaceId, activeProjectId ?? '');
       }
-      await sendMessage(text, buildProjectContext(activeNote));
+      const ctx = buildProjectContext(activeNote);
+      await sendMessage(text, ctx.context);
+
+      // FR-2: deterministic chat capture — no model call, narrow triggers only.
+      if (activeWorkspaceId && activeProjectId) {
+        const sid = useChatStore.getState().activeSessionId ?? '';
+        useAgentMemoryStore
+          .getState()
+          .captureFromChat({ userText: text, projectId: activeProjectId, workspaceId: activeWorkspaceId, sessionId: sid })
+          .catch(() => {});
+      }
     } catch (err: any) {
       setChatLoading(false);
       setChatMessages(prev => [
@@ -418,10 +409,51 @@ export default function AIPanel() {
             </div>
           )}
 
+          {/* Live context (FR-6) */}
+          <div className="summary-card">
+            <div className="summary-header">
+              <div className="summary-title"><Ico.ai /> Live Context</div>
+              <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => setCtxOpen((v) => !v)}>
+                {ctxOpen ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            <div style={{ padding: 'var(--sp-3) var(--sp-4)', fontSize: 'var(--text-xs)', color: 'var(--tx-secondary)', lineHeight: 1.6 }}>
+              {(() => {
+                const parts: string[] = [];
+                if (projectCtx.report.identity) parts.push('project identity');
+                if (projectCtx.report.memoryIncluded > 0) parts.push(`${projectCtx.report.memoryIncluded} memories`);
+                if (projectCtx.report.documentIncluded) parts.push('active document');
+                if (parts.length === 0) return 'No project context. Open a project or add memory to ground the AI.';
+                return (
+                  <>
+                    <div>Sent with every message: <strong style={{ color: 'var(--tx-primary)' }}>{parts.join(', ')}</strong></div>
+                    {projectCtx.report.memoryOmitted > 0 && (
+                      <div style={{ color: 'var(--warning)', marginTop: 4 }}>
+                        {projectCtx.report.memoryOmitted} older memories omitted for space.
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+              {ctxOpen && projectCtx.context && (
+                <pre style={{ maxHeight: 260, overflow: 'auto', margin: '8px 0 0', padding: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono, monospace)', fontSize: 10, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {projectCtx.context}
+                </pre>
+              )}
+            </div>
+          </div>
+
           {/* Recent memories */}
           <div className="summary-card">
             <div className="summary-header">
               <div className="summary-title"><Ico.ai /> Memories</div>
+              <button
+                onClick={() => useAppStore.getState().setActiveView('memory')}
+                className="btn btn-sm btn-ghost"
+                style={{ marginLeft: 'auto' }}
+              >
+                View all
+              </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 'var(--sp-3) var(--sp-4)' }}>
               {memories.length === 0 && (
@@ -429,9 +461,14 @@ export default function AIPanel() {
                   No memories yet. They'll appear as the agent learns about this project.
                 </div>
               )}
-              {memories.slice(0, 4).map((m) => (
+              {memories.slice(0, 8).map((m) => (
                 <div key={m.id} style={{ fontSize: 'var(--text-xs)', color: 'var(--tx-secondary)', lineHeight: 1.5 }}>
                   <span style={{ color: 'var(--accent)', fontWeight: 600, textTransform: 'uppercase', fontSize: 9 }}>{m.type}</span>
+                  {m.source && m.source !== 'user-confirmed' && (
+                    <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 600, textTransform: 'uppercase', color: 'var(--warning)' }}>
+                      {m.source === 'ai-inferred' ? 'ai' : 'auto'}
+                    </span>
+                  )}
                   <div style={{ marginTop: 2 }}>{m.value.slice(0, 90)}{m.value.length > 90 ? '…' : ''}</div>
                 </div>
               ))}

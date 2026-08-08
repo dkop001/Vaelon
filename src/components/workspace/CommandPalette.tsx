@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/appStore';
 import { useDocumentStore } from '../../store/noteStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useAgentStore } from '../../store/agentStore';
+import { useAgentMemoryStore } from '../../store/agentMemoryStore';
 import { Document, DocumentType } from '../../store/noteStore';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -118,13 +119,14 @@ interface Command {
 
 interface BuildCommandsProps {
   documents: Document[];
-  setActiveView: (view: 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings') => void;
+  setActiveView: (view: 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'memory') => void;
   selectDocument: (id: string) => void;
   onNewDocument: (type?: DocumentType) => void;
   openRightPanel: (tab?: 'chat' | 'summary') => void;
   toggleTheme: () => void;
   setActiveMode: (mode: 'knowledge' | 'agent') => void;
-  startAgent: (goal: string, workspacePath: string, projectId?: string) => Promise<void>;
+  startAgent: (goal: string, workspacePath: string, projectId?: string, contextOverride?: string, capture?: boolean) => Promise<void>;
+  openMemory: () => void;
 }
 
 function buildCommands({
@@ -136,6 +138,7 @@ function buildCommands({
   toggleTheme,
   setActiveMode,
   startAgent,
+  openMemory,
 }: BuildCommandsProps): Command[] {
   const docCommands: Command[] = documents.map((d) => ({
     id: `doc-${d.id}`,
@@ -196,6 +199,8 @@ function buildCommands({
     { id: 'go-home', label: 'Home', sub: 'Dashboard overview', Icon: IconHome, group: 'Navigate', action: () => setActiveView('home') },
     { id: 'go-documents', label: 'Knowledge', sub: 'Browse documents', Icon: IconDocument, group: 'Navigate', action: () => setActiveView('documents') },
     { id: 'go-projects', label: 'Projects', sub: 'Manage projects', Icon: IconProjects, group: 'Navigate', action: () => setActiveView('projects') },
+    { id: 'go-memory', label: 'Project Memory', sub: 'Review, confirm & add project memory', Icon: IconMemory, group: 'Navigate', action: () => setActiveView('memory') },
+    { id: 'add-memory', label: 'Add Memory', sub: 'Create a project memory entry', Icon: IconMemory, group: 'Create', action: openMemory },
     { id: 'go-tasks', label: 'Tasks', sub: 'Project tasks & todos', Icon: IconTasks, group: 'Navigate', action: () => setActiveView('tasks') },
     { id: 'go-research', label: 'Research', sub: 'Search, save, compare sources', Icon: IconResearch, group: 'Navigate', action: () => setActiveView('research') },
     { id: 'go-git', label: 'Git', sub: 'Commits, branches, MRs, diff', Icon: IconGit, group: 'Navigate', action: () => setActiveView('git') },
@@ -206,7 +211,7 @@ function buildCommands({
 
     { id: 'ai-chat', label: 'Chat with AI', sub: 'Ask about your project', Icon: IconChat, group: 'AI', action: () => openRightPanel('chat') },
     { id: 'ai-summarize', label: 'Summarize Document', sub: 'AI summary of active document', Icon: IconAI, group: 'AI', action: () => openRightPanel('summary') },
-    { id: 'ai-agent', label: 'Run Agent', sub: 'Start autonomous coding agent', Icon: IconAgent, group: 'AI', kbd: ['⌘', '⇧', 'A'], action: () => { setActiveMode('agent'); const ws = useWorkspaceStore.getState(); startAgent('', ws.activeWorkspaceId ?? '.', ws.activeProjectId ?? undefined); } },
+    { id: 'ai-agent', label: 'Run Agent', sub: 'Start autonomous coding agent', Icon: IconAgent, group: 'AI', kbd: ['⌘', '⇧', 'A'], action: () => { setActiveMode('agent'); const ws = useWorkspaceStore.getState(); const mem = useAgentMemoryStore.getState(); startAgent('', ws.activeWorkspaceId ?? '.', ws.activeProjectId ?? undefined, undefined, mem.autoCapture); } },
     { id: 'toggle-theme', label: 'Toggle Dark / Light', sub: 'Switch color theme', Icon: IconTheme, group: 'Appearance', kbd: ['⌘', '⇧', 'L'], action: toggleTheme },
     { id: 'mode-knowledge', label: 'Knowledge Mode', sub: 'Documents, research, planning', Icon: IconDocument, group: 'Mode', action: () => setActiveMode('knowledge') },
     { id: 'mode-agent', label: 'Agent Mode', sub: 'Autonomous coding agent', Icon: IconAgent, group: 'Mode', action: () => setActiveMode('agent') },
@@ -228,7 +233,17 @@ export default function CommandPalette({ onNewDocument }: CommandPaletteProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLDivElement>(null);
 
-  const commands = buildCommands({ documents, setActiveView, selectDocument, onNewDocument, openRightPanel, toggleTheme, setActiveMode, startAgent });
+  const commands = buildCommands({
+    documents,
+    setActiveView,
+    selectDocument,
+    onNewDocument,
+    openRightPanel,
+    toggleTheme,
+    setActiveMode,
+    startAgent,
+    openMemory: () => useAppStore.getState().triggerMemoryAdd(),
+  });
 
   const filtered = query.trim()
     ? commands.filter((c) =>

@@ -8,6 +8,7 @@ import SettingsPanel from './components/workspace/SettingsPanel';
 import AgentMode from './features/agent/AgentMode';
 import MissionControl from './features/mission-control/MissionControl';
 import ProjectsView from './features/projects/ProjectsView';
+import MemoryView from './features/memory/MemoryView';
 import GraphView from './features/graph/GraphView';
 import TimelineView from './features/timeline/TimelineView';
 import SearchPage from './features/search/SearchPage';
@@ -103,6 +104,10 @@ function AppContent() {
 
             {activeView === 'projects' && (
               <ProjectsView />
+            )}
+
+            {activeView === 'memory' && (
+              <MemoryView />
             )}
 
             {activeView === 'tasks' && (

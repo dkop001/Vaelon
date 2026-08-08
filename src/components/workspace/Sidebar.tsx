@@ -74,6 +74,12 @@ const IconFolder = () => (
     <path d="M1.5 3.5a1 1 0 0 1 1-1h2.5l1.5 1.5h4a1 1 0 0 1 1 1v4.5a1 1 0 0 1-1 1h-8a1 1 0 0 1-1-1v-6Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
   </svg>
 );
+const IconMemory = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <rect x="1.5" y="1.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+    <path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
 const IconFile = () => (
   <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
     <path d="M3 1h5.5L11 3.5V11.5A.5.5 0 0 1 10.5 12h-7.5A.5.5 0 0 1 2.5 11.5v-10A.5.5 0 0 1 3 1Z" stroke="currentColor" strokeWidth="1.2"/>
@@ -84,6 +90,7 @@ const NAV: { id: ActiveView | 'chatHistory'; label: string; Icon: React.FC }[] =
   { id: 'home',       label: 'Mission Control', Icon: IconHome      },
   { id: 'projects',   label: 'Projects',        Icon: IconProjects  },
   { id: 'documents',  label: 'Knowledge',       Icon: IconKnowledge },
+  { id: 'memory',     label: 'Project Memory',  Icon: IconMemory    },
   { id: 'graph',      label: 'Graph',           Icon: IconGraph     },
   { id: 'tasks',      label: 'Tasks',           Icon: IconTasks     },
   { id: 'git',        label: 'Git',             Icon: IconGit       },

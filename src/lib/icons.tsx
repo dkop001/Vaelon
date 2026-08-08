@@ -179,4 +179,10 @@ export const Icons = {
       <path d="M7 10 3 6l4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ),
+  Info: ({ size, className }: IconProps) => (
+    <svg width={s(size)} height={s(size)} viewBox="0 0 14 14" fill="none" className={className}>
+      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M7 6.5V10M7 4.2v.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  ),
 };

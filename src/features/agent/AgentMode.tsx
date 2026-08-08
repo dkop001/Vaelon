@@ -1,7 +1,9 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useAgentStore, AgentTask } from '../../store/agentStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useNoteStore } from '../../store/noteStore';
+import { useAgentMemoryStore } from '../../store/agentMemoryStore';
+import { buildProjectContext, ContextReport } from '../../lib/projectContext';
 import { Icons } from '../../lib/icons';
 import TerminalPanel from './TerminalPanel';
 
@@ -71,7 +73,35 @@ function StatsBar({ created, modified, actions, errors }: { created: number; mod
   );
 }
 
-// ── Main AgentMode ────────────────────────────────────────────────────────────
+// ── Context summary (FR-5/FR-6) ──────────────────────────────────────────────
+function ContextSummary({ report, context }: { report: ContextReport; context: string | undefined }) {
+  const [open, setOpen] = useState(false);
+  const parts: string[] = [];
+  if (report.identity) parts.push('project identity');
+  if (report.memoryIncluded > 0) parts.push(`${report.memoryIncluded} memories`);
+  if (report.documentIncluded) parts.push('active document');
+
+  return (
+    <div className="agent-context-card">
+      <div className="agent-context-head" onClick={() => setOpen((v) => !v)} role="button" tabIndex={0}>
+        <Icons.Info />
+        <span>
+          Context to run with:{' '}
+          <strong style={{ color: 'var(--tx-primary)' }}>{parts.length > 0 ? parts.join(', ') : 'none (no project context)'}</strong>
+        </span>
+        {report.memoryOmitted > 0 && <span className="agent-context-omit">{report.memoryOmitted} omitted</span>}
+        <span className="agent-context-toggle">{open ? '−' : '+'}</span>
+      </div>
+      {open && (
+        context ? (
+          <pre className="agent-context-full">{context}</pre>
+        ) : (
+          <div className="agent-context-empty">No project context is being passed. Open a project or add memory to ground the agent.</div>
+        )
+      )}
+    </div>
+  );
+}
 export default function AgentMode() {
   const {
     status, goal, tasks, toolCalls,
@@ -80,13 +110,20 @@ export default function AgentMode() {
     startAgent, stopAgent, approveAction, denyAction, clearState,
   } = useAgentStore();
 
-  const { activeWorkspaceId, activeProjectId } = useWorkspaceStore();
+  const { activeWorkspaceId, activeProjectId, projectMeta } = useWorkspaceStore();
   const { notes, activeNoteId } = useNoteStore();
+  const { memories } = useAgentMemoryStore();
   const activeNote = notes.find(n => n.id === activeNoteId);
 
   const [input, setInput] = useState('');
   const [activeTab, setActiveTab] = useState<'chat' | 'terminal'>('chat');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // FR-5: same context both modes use, built fresh before each run.
+  const projectCtx = useMemo(
+    () => buildProjectContext(activeNote),
+    [activeNote, projectMeta, memories]
+  );
 
   const isRunning = status === 'running' || status === 'planning';
   const isBlocked = status === 'blocked';
@@ -104,8 +141,14 @@ export default function AgentMode() {
     if (!text || isRunning) return;
     const workspacePath = activeWorkspaceId ?? '.';
     setInput('');
-    await startAgent(text, workspacePath, activeProjectId || undefined);
-  }, [input, isRunning, activeWorkspaceId, activeProjectId, startAgent]);
+    await startAgent(
+      text,
+      workspacePath,
+      activeProjectId || undefined,
+      projectCtx.context,
+      useAgentMemoryStore.getState().autoCapture,
+    );
+  }, [input, isRunning, activeWorkspaceId, activeProjectId, startAgent, projectCtx.context]);
 
   const handleStop = useCallback(async () => {
     await stopAgent();
@@ -171,11 +214,7 @@ export default function AgentMode() {
                   <div className="agent-empty-desc">
                     Describe a goal and the agent will plan and execute it autonomously using your workspace.
                   </div>
-                  {activeNote && (
-                    <div className="agent-context-badge">
-                      📄 Context: {activeNote.title || 'Untitled'}
-                    </div>
-                  )}
+                  <ContextSummary report={projectCtx.report} context={projectCtx.context} />
                 </div>
               )}
 

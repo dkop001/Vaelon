@@ -48,7 +48,7 @@ interface AgentState {
   loading: boolean;
 
   init: () => () => void;
-  startAgent: (goal: string, workspacePath: string, projectId?: string) => Promise<void>;
+  startAgent: (goal: string, workspacePath: string, projectId?: string, contextOverride?: string, capture?: boolean) => Promise<void>;
   stopAgent: () => Promise<void>;
   approveAction: () => Promise<void>;
   denyAction: () => Promise<void>;
@@ -220,10 +220,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     };
   },
 
-  startAgent: async (goal: string, workspacePath: string, projectId?: string) => {
+  startAgent: async (goal: string, workspacePath: string, projectId?: string, contextOverride?: string, capture?: boolean) => {
     set({ loading: true, status: 'planning' });
     try {
-      const runId = await api.agentStart(goal, workspacePath, projectId);
+      const runId = await api.agentStart(goal, workspacePath, projectId, contextOverride, capture);
       set({ runId, goal, status: 'running', loading: false });
     } catch (err: any) {
       set({ status: 'failed', loading: false });

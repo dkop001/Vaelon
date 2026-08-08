@@ -52,13 +52,14 @@ function SyncBadge({ state }: { state: SyncState }) {
 }
 
 // ── Breadcrumb ─────────────────────────────────────────────────────────────────
-type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline';
+type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline' | 'memory';
 
 function Breadcrumb({ activeView, documentTitle }: { activeView: ActiveView; documentTitle?: string }) {
   const viewLabels: Record<string, string> = {
     home: 'Home', documents: 'Knowledge', projects: 'Projects', tasks: 'Tasks',
     research: 'Research', git: 'Git', builds: 'Builds', terminal: 'Terminal',
     search: 'Search', settings: 'Settings', chatHistory: 'Chat History', graph: 'Graph', timeline: 'Timeline',
+    memory: 'Project Memory',
   };
   const viewLabel = viewLabels[activeView] ?? activeView;
   return (

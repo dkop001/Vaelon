@@ -192,6 +192,9 @@ export type MemoryType =
   | 'decisions'
   | 'custom';
 
+// Provenance — where a memory came from (Phase 5)
+export type MemorySource = 'user-confirmed' | 'ai-inferred' | 'agent-observed';
+
 export interface MemoryEntry {
   id: string;
   project_id: string;
@@ -200,6 +203,9 @@ export interface MemoryEntry {
   key: string;
   value: string;
   context: string;
+  source: MemorySource;
+  confidence?: number;
+  origin_session_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -263,8 +269,8 @@ export const api = {
   terminalKill: (id: string) => invoke<void>('terminal_kill_cmd', { id }),
 
   // Agent
-  agentStart: (goal: string, workspacePath: string, projectId?: string) =>
-    invoke<string>('agent_start_cmd', { goal, workspacePath, projectId }),
+  agentStart: (goal: string, workspacePath: string, projectId?: string, contextOverride?: string, capture?: boolean) =>
+    invoke<string>('agent_start_cmd', { goal, workspacePath, projectId, contextOverride, capture }),
   agentStop: (runId: string) => invoke<void>('agent_stop_cmd', { runId }),
   agentApprove: (actionId: string) => invoke<void>('agent_approve_cmd', { actionId }),
   agentDeny: (actionId: string) => invoke<void>('agent_deny_cmd', { actionId }),
@@ -295,8 +301,8 @@ export const api = {
   memoryList: (workspaceId: string, projectId?: string, type?: MemoryType) =>
     invoke<MemoryEntry[]>('memory_list_cmd', { workspaceId, projectId, type }),
   memorySet: (entry: MemoryEntry) => invoke<MemoryEntry>('memory_set_cmd', { entry }),
-  memoryUpdate: (id: string, value: string, context?: string) =>
-    invoke<void>('memory_update_cmd', { id, value, context }),
+  memoryUpdate: (id: string, value: string, context?: string, source?: MemorySource, confidence?: number) =>
+    invoke<void>('memory_update_cmd', { id, value, context, source, confidence }),
   memoryDelete: (id: string) => invoke<void>('memory_delete_cmd', { id }),
 };
 

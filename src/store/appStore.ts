@@ -9,7 +9,7 @@ export interface BackgroundServices {
   agent: 'inactive' | 'active' | 'error' | 'starting';
 }
 
-export type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline';
+export type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline' | 'memory';
 
 interface AppState {
   theme: 'dark' | 'light';
@@ -39,6 +39,9 @@ interface AppState {
   setBackgroundService: (service: keyof BackgroundServices, status: BackgroundServices[keyof BackgroundServices]) => void;
   activeProjectPath: string | null;
   setActiveProjectPath: (path: string | null) => void;
+  memoryAddSignal: number;
+  triggerMemoryAdd: () => void;
+  consumeMemoryAdd: () => number;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -83,4 +86,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   activeProjectPath: null,
   setActiveProjectPath: (path) => set({ activeProjectPath: path }),
+  memoryAddSignal: 0,
+  triggerMemoryAdd: () => { set((s) => ({ memoryAddSignal: s.memoryAddSignal + 1, activeView: 'memory', sidebarMode: 'nav' })); },
+  consumeMemoryAdd: () => {
+    const v = get().memoryAddSignal;
+    set({ memoryAddSignal: 0 });
+    return v;
+  },
 }));

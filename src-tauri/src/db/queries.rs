@@ -583,8 +583,11 @@ fn parse_memory(r: &rusqlite::Row) -> rusqlite::Result<MemoryEntry> {
         key: r.get(4)?,
         value: r.get(5)?,
         context: r.get(6)?,
-        created_at: r.get(7)?,
-        updated_at: r.get(8)?,
+        source: r.get(7)?,
+        confidence: r.get(8)?,
+        origin_session_id: r.get(9)?,
+        created_at: r.get(10)?,
+        updated_at: r.get(11)?,
     })
 }
 
@@ -597,7 +600,7 @@ pub fn memory_list(
 ) -> Result<Vec<MemoryEntry>> {
     let conn = pool.lock().unwrap();
     let mut sql = String::from(
-        "SELECT id, project_id, workspace_id, type, key, value, context, created_at, updated_at
+        "SELECT id, project_id, workspace_id, type, key, value, context, source, confidence, origin_session_id, created_at, updated_at
          FROM agent_memories WHERE workspace_id = ?1"
     );
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(workspace_id.to_string())];
@@ -622,18 +625,20 @@ pub fn memory_upsert(pool: &DbPool, m: &MemoryEntry) -> Result<MemoryEntry> {
     let conn = pool.lock().unwrap();
     let ts = chrono::Utc::now().naive_utc().format("%Y-%m-%dT%H:%M:%S").to_string();
     conn.execute(
-        "INSERT INTO agent_memories (id, project_id, workspace_id, type, key, value, context, created_at, updated_at)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
+        "INSERT INTO agent_memories (id, project_id, workspace_id, type, key, value, context, source, confidence, origin_session_id, created_at, updated_at)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)
          ON CONFLICT(workspace_id, project_id, type, key) DO UPDATE SET
-           value=excluded.value, context=excluded.context, updated_at=excluded.updated_at",
+           value=excluded.value, context=excluded.context, source=excluded.source,
+           confidence=excluded.confidence, origin_session_id=excluded.origin_session_id,
+           updated_at=excluded.updated_at",
         params![
             m.id, m.project_id, m.workspace_id, m.r#type, m.key, m.value,
-            m.context, ts, ts
+            m.context, m.source, m.confidence, m.origin_session_id, ts, ts
         ],
     )?;
     // Fetch the stored row so `id` reflects the winner of the upsert.
     let mut stmt = conn.prepare(
-        "SELECT id, project_id, workspace_id, type, key, value, context, created_at, updated_at
+        "SELECT id, project_id, workspace_id, type, key, value, context, source, confidence, origin_session_id, created_at, updated_at
          FROM agent_memories WHERE workspace_id = ?1 AND project_id = ?2 AND type = ?3 AND key = ?4"
     )?;
     let row = stmt.query_row(
@@ -643,12 +648,21 @@ pub fn memory_upsert(pool: &DbPool, m: &MemoryEntry) -> Result<MemoryEntry> {
     Ok(row)
 }
 
-pub fn memory_update(pool: &DbPool, id: &str, value: &str, context: Option<&str>) -> Result<()> {
+pub fn memory_update(
+    pool: &DbPool,
+    id: &str,
+    value: &str,
+    context: Option<&str>,
+    source: Option<&str>,
+    confidence: Option<f64>,
+) -> Result<()> {
     let conn = pool.lock().unwrap();
     let ts = chrono::Utc::now().naive_utc().format("%Y-%m-%dT%H:%M:%S").to_string();
     conn.execute(
-        "UPDATE agent_memories SET value = ?1, context = COALESCE(?2, context), updated_at = ?3 WHERE id = ?4",
-        params![value, context, ts, id],
+        "UPDATE agent_memories SET value = ?1, context = COALESCE(?2, context),
+            source = COALESCE(?3, source), confidence = COALESCE(?4, confidence),
+            updated_at = ?5 WHERE id = ?6",
+        params![value, context, source, confidence, ts, id],
     )?;
     Ok(())
 }

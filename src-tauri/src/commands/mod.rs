@@ -416,9 +416,11 @@ pub fn agent_start_cmd(
     goal: String,
     workspace_path: String,
     project_id: Option<String>,
+    context_override: Option<String>,
+    capture: Option<bool>,
 ) -> String {
     let settings = state.llm_settings.lock().unwrap().clone();
-    state.agent_manager.start(app, goal, workspace_path, project_id, state.db.clone(), settings)
+    state.agent_manager.start(app, goal, workspace_path, project_id, context_override, capture.unwrap_or(true), state.db.clone(), settings)
 }
 
 #[tauri::command]
@@ -558,15 +560,18 @@ pub fn memory_set_cmd(state: State<AppState>, entry: MemoryEntry) -> Result<Memo
     memory_upsert(&state.db, &entry).map_err(|e| e.to_string())
 }
 
-/// Update an existing memory's value.
+/// Update an existing memory's value (optionally flipping provenance: source/confidence).
 #[tauri::command]
 pub fn memory_update_cmd(
     state: State<AppState>,
     id: String,
     value: String,
     context: Option<String>,
+    source: Option<String>,
+    confidence: Option<f64>,
 ) -> Result<(), String> {
-    memory_update(&state.db, &id, &value, context.as_deref()).map_err(|e| e.to_string())
+    memory_update(&state.db, &id, &value, context.as_deref(), source.as_deref(), confidence)
+        .map_err(|e| e.to_string())
 }
 
 /// Delete a memory by id.

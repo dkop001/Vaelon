@@ -1155,6 +1155,13 @@ img,video{max-width:100%;height:auto}
 .agent-empty-title{font-size:1rem;font-weight:700;color:var(--tx-primary);margin-bottom:4px}
 .agent-empty-desc{font-size:0.8125rem;color:var(--tx-tertiary);line-height:1.6;max-width:280px}
 .agent-context-badge{font-size:0.75rem;color:var(--accent);background:var(--accent-muted);border:1px solid var(--accent-border);padding:4px 12px;border-radius:20px;margin-top:8px}
+.agent-context-card{width:100%;max-width:320px;margin-top:14px;text-align:left;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);overflow:hidden}
+.agent-context-head{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:0.6875rem;color:var(--tx-secondary);cursor:pointer;user-select:none;flex-wrap:wrap}
+.agent-context-head:hover{background:var(--bg-hover)}
+.agent-context-omit{color:var(--warning);font-weight:600;text-transform:uppercase;font-size:9px}
+.agent-context-toggle{color:var(--tx-tertiary);font-weight:700;margin-left:auto}
+.agent-context-full{max-height:220px;overflow:auto;margin:0;padding:12px;border-top:1px solid var(--border-subtle);font-family:var(--font-mono, monospace);font-size:10px;line-height:1.6;color:var(--tx-secondary);white-space:pre-wrap;word-break:break-word;background:var(--bg-elevated)}
+.agent-context-empty{padding:12px;border-top:1px solid var(--border-subtle);font-size:0.6875rem;color:var(--tx-tertiary);line-height:1.6}
 .agent-status-row{display:flex;align-items:center;gap:8px;color:var(--tx-secondary);font-size:0.875rem;padding:8px 12px;background:var(--glass-bg);backdrop-filter:blur(12px) saturate(1.2);-webkit-backdrop-filter:blur(12px) saturate(1.2);border-radius:var(--radius-lg);border:1px solid var(--glass-border)}
 .agent-task-list{display:flex;flex-direction:column;gap:6px}
 .agent-task-item{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;border-radius:var(--radius-lg);background:var(--glass-bg);backdrop-filter:blur(8px) saturate(1.2);-webkit-backdrop-filter:blur(8px) saturate(1.2);border:1px solid var(--glass-border);transition:all .15s}

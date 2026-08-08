@@ -23,6 +23,25 @@ fn migrate_columns(conn: &Connection) -> Result<()> {
     if !has_path {
         conn.execute("ALTER TABLE projects ADD COLUMN path TEXT NOT NULL DEFAULT ''", [])?;
     }
+
+    // agent_memories provenance (Phase 5): source / confidence / origin_session_id
+    let memory_cols: Vec<String> = conn
+        .prepare("PRAGMA table_info(agent_memories)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .filter_map(|r| r.ok())
+        .collect();
+    if !memory_cols.iter().any(|c| c == "source") {
+        conn.execute(
+            "ALTER TABLE agent_memories ADD COLUMN source TEXT NOT NULL DEFAULT 'user-confirmed'",
+            [],
+        )?;
+    }
+    if !memory_cols.iter().any(|c| c == "confidence") {
+        conn.execute("ALTER TABLE agent_memories ADD COLUMN confidence REAL", [])?;
+    }
+    if !memory_cols.iter().any(|c| c == "origin_session_id") {
+        conn.execute("ALTER TABLE agent_memories ADD COLUMN origin_session_id TEXT NOT NULL DEFAULT ''", [])?;
+    }
     Ok(())
 }
 
@@ -270,6 +289,9 @@ CREATE TABLE IF NOT EXISTS agent_memories (
     key          TEXT NOT NULL DEFAULT '',
     value        TEXT NOT NULL,
     context      TEXT NOT NULL DEFAULT '',
+    source       TEXT NOT NULL DEFAULT 'user-confirmed',
+    confidence   REAL,
+    origin_session_id TEXT NOT NULL DEFAULT '',
     created_at   TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -357,6 +357,9 @@ pub struct MemoryEntry {
     pub key: String,
     pub value: String,
     pub context: String,
+    pub source: String, // "user-confirmed" | "ai-inferred" | "agent-observed"
+    pub confidence: Option<f64>,
+    pub origin_session_id: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -379,6 +382,9 @@ impl MemoryEntry {
             key: key.into(),
             value: value.into(),
             context: context.into(),
+            source: "user-confirmed".into(),
+            confidence: None,
+            origin_session_id: String::new(),
             created_at: ts.clone(),
             updated_at: ts,
         }
