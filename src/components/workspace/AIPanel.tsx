@@ -23,6 +23,15 @@ const Ico = {
       <path d="M7 1 8.3 5H12L9 7.5l1.1 4L7 9.2 3.9 11.5 5 7.5 2 5h3.7L7 1Z" fill="currentColor"/>
     </svg>
   ),
+  context: () => (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      {/* stacked context planes */}
+      <rect x="2" y="5.6" width="8.4" height="6" rx="1.4" stroke="currentColor" strokeWidth="1.2"/>
+      <rect x="3.6" y="2.6" width="8.4" height="6" rx="1.4" stroke="currentColor" strokeWidth="1.2" opacity="0.55"/>
+      <circle cx="6.2" cy="8.6" r="1.15" fill="currentColor"/>
+      <path d="M7.6 8.6h2.1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  ),
   summarize: () => (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
       <rect x="1.5" y="1.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.2"/>
@@ -79,7 +88,7 @@ function ChatMessage({ msg, isLast, isLoading }: { msg: MsgItem; isLast: boolean
         border: isAI ? 'none' : '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 10, fontWeight: 700, color: isAI ? 'white' : 'var(--tx-secondary)',
-        boxShadow: isAI ? '0 0 8px hsla(258,88%,68%,.3)' : 'none',
+        boxShadow: isAI ? '0 0 10px hsla(248,100%,71%,.35)' : 'none',
       }}>
         {isAI ? '✦' : 'U'}
       </div>
@@ -311,7 +320,7 @@ export default function AIPanel() {
     <aside className="ai-panel workspace-right" aria-label="AI Panel" id="ai-panel">
       {/* ── Header ── */}
       <div className="ai-panel-header">
-        <div className="ai-panel-logo"><Ico.ai /></div>
+        <div className="ai-panel-logo"><Ico.context /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="ai-panel-title">Context Panel</div>
           <div className="ai-panel-subtitle">
@@ -389,7 +398,7 @@ export default function AIPanel() {
                   </div>
                 </div>
                 {intel.dna?.architecture && (
-                  <div style={{ padding: 'var(--sp-3) var(--sp-4)', borderTop: '1px solid var(--glass-border)', fontSize: 'var(--text-xs)', color: 'var(--tx-secondary)', lineHeight: 1.6 }}>
+                  <div style={{ padding: 'var(--sp-3) var(--sp-4)', borderTop: '1px solid var(--border-subtle)', fontSize: 'var(--text-xs)', color: 'var(--tx-secondary)', lineHeight: 1.6 }}>
                     <div className="intel-stat-label" style={{ marginBottom: 4 }}>Architecture</div>
                     {intel.dna.architecture}
                   </div>

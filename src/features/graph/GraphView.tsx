@@ -19,9 +19,9 @@ const NODE_RADIUS: Record<string, number> = {
 };
 
 const COLORS: Record<string, string> = {
-  directory: '#8b5cf6',
-  file: '#6366f1',
-  symbol: '#fbbf24',
+  directory: '#B79BFF',
+  file: '#7C6CFF',
+  symbol: '#FFB454',
 };
 
 const EDGE_OPACITY: Record<string, number> = {
@@ -31,9 +31,9 @@ const EDGE_OPACITY: Record<string, number> = {
 };
 
 const EDGE_COLOR: Record<string, string> = {
-  contains: '#475569',
-  defines: '#f59e0b',
-  imports: '#818cf8',
+  contains: '#5B6472',
+  defines: '#FFB454',
+  imports: '#4FD1FF',
 };
 
 function buildSim(nodes: GraphNode[], edges: GraphEdge[]): { nodes: SimNode[]; edges: SimEdge[] } {
@@ -57,6 +57,8 @@ function stepSim(nodes: SimNode[], edges: SimEdge[], iterations: number) {
   const rest = 90;       // ideal edge length
   const repulsion = 2200; // node-node repulsion
   const damping = 0.85;
+  const maxSpeed = 3.5;  // per-iteration velocity clamp (prevents blow-up)
+  const world = 380;     // soft position bound — keep the layout on-canvas
 
   for (let iter = 0; iter < iterations; iter++) {
     // Repulsion (O(n²) — fine for a few hundred nodes)
@@ -68,7 +70,8 @@ function stepSim(nodes: SimNode[], edges: SimEdge[], iterations: number) {
         let dy = b.y - a.y;
         let dist = Math.sqrt(dx * dx + dy * dy) || 1;
         if (dist < 5) dist = 5;
-        const force = repulsion / (dist * dist);
+        // Softened repulsion so close pairs can't produce runaway forces.
+        const force = Math.min(repulsion / (dist * dist), 12);
         dx /= dist;
         dy /= dist;
         a.vx -= dx * force;
@@ -85,7 +88,8 @@ function stepSim(nodes: SimNode[], edges: SimEdge[], iterations: number) {
       let dx = b.x - a.x;
       let dy = b.y - a.y;
       let dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      const force = (dist - rest) * k;
+      // Clamp the spring pull so distant nodes snap back smoothly, not explosively.
+      const force = Math.max(-18, Math.min(18, (dist - rest) * k));
       dx /= dist;
       dy /= dist;
       a.vx += dx * force;
@@ -93,12 +97,15 @@ function stepSim(nodes: SimNode[], edges: SimEdge[], iterations: number) {
       b.vx -= dx * force;
       b.vy -= dy * force;
     }
-    // Apply velocity + damping
+    // Apply velocity + damping, clamped to keep the system bounded.
     for (const n of nodes) {
       n.x += n.vx * damping;
       n.y += n.vy * damping;
-      n.vx *= damping;
-      n.vy *= damping;
+      n.vx = Math.max(-maxSpeed, Math.min(maxSpeed, n.vx * damping));
+      n.vy = Math.max(-maxSpeed, Math.min(maxSpeed, n.vy * damping));
+      // Soft boundary — push nodes back toward the center when they drift out.
+      if (Math.abs(n.x) > world) n.x = Math.sign(n.x) * world;
+      if (Math.abs(n.y) > world) n.y = Math.sign(n.y) * world;
     }
   }
 }

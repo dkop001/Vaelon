@@ -44,17 +44,17 @@ const IconBack = () => (
   </svg>
 );
 
-const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899', '#8b5cf6', '#84cc16'];
+const COLORS = ['#7C6CFF', '#43D39E', '#FFB454', '#FF647C', '#4FD1FF', '#E07CF0', '#B79BFF', '#C7F464'];
 
 const PALETTE_LABELS: Record<string, string> = {
-  '#6366f1': 'Indigo',
-  '#22c55e': 'Green',
-  '#f59e0b': 'Amber',
-  '#ef4444': 'Red',
-  '#06b6d4': 'Cyan',
-  '#ec4899': 'Pink',
-  '#8b5cf6': 'Violet',
-  '#84cc16': 'Lime',
+  '#7C6CFF': 'Violet',
+  '#43D39E': 'Green',
+  '#FFB454': 'Amber',
+  '#FF647C': 'Red',
+  '#4FD1FF': 'Cyan',
+  '#E07CF0': 'Pink',
+  '#B79BFF': 'Lavender',
+  '#C7F464': 'Lime',
 };
 
 function timeAgo(iso: string | undefined): string {
@@ -83,8 +83,19 @@ function ProjectFormModal({ initial, onClose }: ProjectFormModalProps) {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [color, setColor] = useState(initial?.color || COLORS[0]);
+  const [folder, setFolder] = useState(initial?.path || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pre-fill the folder with the active workspace path on first open.
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
+  useEffect(() => {
+    if (!initial && !folder) {
+      const ws = workspaces.find((w) => w.id === activeWorkspaceId);
+      if (ws?.path) setFolder(ws.path);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Project Identity fields ──
   const [identityOpen, setIdentityOpen] = useState(false);
@@ -139,7 +150,12 @@ function ProjectFormModal({ initial, onClose }: ProjectFormModalProps) {
       } else {
         await createProject(trimmed, description.trim());
         const newProjectId = useWorkspaceStore.getState().activeProjectId;
-        if (newProjectId) await saveIdentity(newProjectId);
+        if (newProjectId) {
+          if (folder.trim()) {
+            await updateProject(newProjectId, { path: folder.trim() });
+          }
+          await saveIdentity(newProjectId);
+        }
       }
       onClose();
     } catch (err: any) {
@@ -168,6 +184,19 @@ function ProjectFormModal({ initial, onClose }: ProjectFormModalProps) {
           autoFocus
           onKeyDown={(e) => e.key === 'Enter' && submit()}
         />
+
+        <label className="project-field-label" htmlFor="project-folder">Folder</label>
+        <input
+          id="project-folder"
+          className="project-input"
+          placeholder="C:\Users\you\projects\vaelon"
+          value={folder}
+          onChange={(e) => setFolder(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+        />
+        <p className="project-identity-hint">
+          The folder on disk this project lives in. The agent reads this folder before it works.
+        </p>
 
         <label className="project-field-label" htmlFor="project-description">Description</label>
         <textarea
@@ -200,12 +229,12 @@ function ProjectFormModal({ initial, onClose }: ProjectFormModalProps) {
           onClick={() => setIdentityOpen((o) => !o)}
           id="project-identity-toggle"
         >
-          <span>Project Identity</span>
+          <span>Advanced — Project Identity <span style={{ color: 'var(--tx-tertiary)', fontWeight: 600 }}>(optional)</span></span>
           <span className="project-identity-chevron">{identityOpen ? '▾' : '▸'}</span>
         </button>
         <p className="project-identity-hint">
           A profile every agent and chat session reads before acting. Change projects — the AI's
-          knowledge changes with them.
+          knowledge changes with them. Optional — you can set this later.
         </p>
 
         {identityOpen && (
@@ -317,7 +346,7 @@ function ProjectDetail({ project, onBack, onEdit }: { project: Project; onBack: 
           <span className="btn-icon"><IconBack /></span>
           All projects
         </button>
-        <span className="project-detail-dot" style={{ background: project.color || '#6366f1' }} />
+        <span className="project-detail-dot" style={{ background: project.color || '#7c6cf0' }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="project-detail-title">{project.name}</div>
           {project.description && (
@@ -545,7 +574,7 @@ export default function ProjectsView() {
                 onKeyDown={(e) => e.key === 'Enter' && openProjectFromCard(p)}
               >
                 <div className="project-card-top">
-                  <span className="project-card-color" style={{ background: p.color || '#6366f1' }} />
+                  <span className="project-card-color" style={{ background: p.color || '#7c6cf0' }} />
                   <div className="project-card-actions" onClick={(e) => e.stopPropagation()}>
                     <button
                       className="btn btn-icon-sm btn-ghost"

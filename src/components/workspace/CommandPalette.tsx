@@ -72,12 +72,6 @@ const IconGit = () => (
     <path d="M4.5 3h5M4.5 11h5M3 4.5v5M11 4.5v5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
   </svg>
 );
-const IconBuilds = () => (
-  <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-    <path d="M2 11h10M5 11V5M9 11V5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-    <path d="M5 5h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-  </svg>
-);
 const IconTerminal = () => (
   <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
     <rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
@@ -119,7 +113,7 @@ interface Command {
 
 interface BuildCommandsProps {
   documents: Document[];
-  setActiveView: (view: 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'memory') => void;
+  setActiveView: (view: 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'terminal' | 'search' | 'settings' | 'memory') => void;
   selectDocument: (id: string) => void;
   onNewDocument: (type?: DocumentType) => void;
   openRightPanel: (tab?: 'chat' | 'summary') => void;
@@ -204,7 +198,6 @@ function buildCommands({
     { id: 'go-tasks', label: 'Tasks', sub: 'Project tasks & todos', Icon: IconTasks, group: 'Navigate', action: () => setActiveView('tasks') },
     { id: 'go-research', label: 'Research', sub: 'Search, save, compare sources', Icon: IconResearch, group: 'Navigate', action: () => setActiveView('research') },
     { id: 'go-git', label: 'Git', sub: 'Commits, branches, MRs, diff', Icon: IconGit, group: 'Navigate', action: () => setActiveView('git') },
-    { id: 'go-builds', label: 'Builds', sub: 'Build logs, artifacts, deploys', Icon: IconBuilds, group: 'Navigate', action: () => setActiveView('builds') },
     { id: 'go-terminal', label: 'Terminal', sub: 'Integrated shell', Icon: IconTerminal, group: 'Navigate', kbd: ['⌘', '`'], action: () => setActiveView('terminal') },
     { id: 'go-search', label: 'Search', sub: 'Global search across everything', Icon: IconSearch, group: 'Navigate', kbd: ['⌘', 'K'], action: () => setActiveView('search') },
     { id: 'go-settings', label: 'Settings', sub: 'Account & preferences', Icon: IconSettings, group: 'Navigate', action: () => setActiveView('settings') },

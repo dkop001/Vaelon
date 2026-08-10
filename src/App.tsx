@@ -92,6 +92,10 @@ function AppContent() {
               <MissionControl />
             )}
 
+            {activeView === 'agent' && (
+              <AgentMode />
+            )}
+
             {activeView === 'documents' && (
               <DocumentWorkspace
                 onStatsChange={() => {}}
@@ -120,10 +124,6 @@ function AppContent() {
 
             {activeView === 'git' && (
               <div className="page-placeholder">Git View - Coming Soon</div>
-            )}
-
-            {activeView === 'builds' && (
-              <div className="page-placeholder">Builds View - Coming Soon</div>
             )}
 
             {activeView === 'graph' && (

@@ -17,9 +17,8 @@
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--glass-border);
-  background: rgba(10, 13, 20, 0.7);
-  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
   z-index: 2;
   flex-shrink: 0;
 }
@@ -28,7 +27,7 @@
   flex: 0 0 220px;
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border);
   background: var(--input-bg);
   color: var(--tx-primary);
   font-size: var(--text-sm);
@@ -109,9 +108,8 @@
   gap: 14px;
   padding: 6px 12px;
   border-radius: 8px;
-  background: rgba(10, 13, 20, 0.8);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(8px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   font-size: var(--text-xs);
   color: var(--tx-secondary);
 }
@@ -168,10 +166,9 @@
   width: 260px;
   padding: 14px 16px;
   border-radius: 10px;
-  background: rgba(15, 18, 22, 0.95);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
   z-index: 3;
 }
 .graph-inspector-head {
@@ -212,7 +209,7 @@
 .graph-inspector-meta {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--glass-border);
+  border-top: 1px solid var(--border-subtle);
   font-size: var(--text-xs);
   color: var(--tx-secondary);
 }

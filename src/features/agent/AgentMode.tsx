@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useAgentStore, AgentTask } from '../../store/agentStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useNoteStore } from '../../store/noteStore';
@@ -102,6 +102,54 @@ function ContextSummary({ report, context }: { report: ContextReport; context: s
     </div>
   );
 }
+// ── Execution Rail (PRD §19) ─────────────────────────────────────────────────
+function ExecutionRail({ status, goal, tasks }: { status: string; goal: string; tasks: AgentTask[] }) {
+  const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+  const totalTasks = tasks.length;
+  const done = status === 'completed';
+
+  const steps = [
+    { key: 'context',   label: 'Context loaded',    state: done || totalTasks > 0 ? 'done' : status === 'idle' ? 'idle' : 'active' },
+    { key: 'plan',      label: 'Goal understood',   state: done || totalTasks > 0 ? 'done' : status === 'planning' || status === 'running' ? 'active' : 'idle' },
+    { key: 'exec',      label: 'Executing tasks',   state: status === 'running' ? 'active' : status === 'completed' ? 'done' : 'idle', detail: totalTasks > 0 ? `${completedTasks}/${totalTasks}` : undefined },
+    { key: 'approve',   label: 'Human approval',    state: status === 'blocked' ? 'active' : done ? 'done' : 'idle' },
+    { key: 'verify',    label: 'Verifying results', state: status === 'completed' ? 'done' : status === 'running' ? 'active' : 'idle' },
+    { key: 'complete',  label: 'Complete',          state: status === 'completed' ? 'done' : status === 'failed' ? 'fail' : 'idle' },
+  ];
+
+  const activeIdx = steps.findIndex((s) => s.state === 'active');
+
+  return (
+    <div className="exec-rail" aria-label="Agent execution rail">
+      <div className="exec-rail-head">
+        <span className="exec-rail-title">EXECUTION</span>
+        <span className={`exec-rail-status ${status}`}>{status}</span>
+      </div>
+      <div className="exec-rail-goal">{goal || 'Awaiting goal'}</div>
+      <div className="exec-rail-track">
+        {steps.map((step, i) => {
+          const isActive = step.state === 'active';
+          const isDone = step.state === 'done';
+          const isFail = step.state === 'fail';
+          const lineActive = i < activeIdx || (isDone && activeIdx === -1);
+          return (
+            <div key={step.key} className={`exec-step ${isActive ? 'active' : ''} ${isDone ? 'done' : ''} ${isFail ? 'fail' : ''}`}>
+              <div className="exec-step-mark">
+                <span className={`exec-step-node ${isActive ? 'pulse' : ''} ${isDone ? 'done' : ''} ${isFail ? 'fail' : ''}`} />
+                {i < steps.length - 1 && <span className={`exec-step-line ${lineActive ? 'active' : ''}`} />}
+              </div>
+              <div className="exec-step-body">
+                <span className="exec-step-label">{step.label}</span>
+                {step.detail && <span className="exec-step-detail">{step.detail}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function AgentMode() {
   const {
     status, goal, tasks, toolCalls,
@@ -110,14 +158,29 @@ export default function AgentMode() {
     startAgent, stopAgent, approveAction, denyAction, clearState,
   } = useAgentStore();
 
-  const { activeWorkspaceId, activeProjectId, projectMeta } = useWorkspaceStore();
+  const { workspaces, projects, activeWorkspaceId, activeProjectId, projectMeta, selectProject, selectWorkspace, getActiveProject } = useWorkspaceStore();
   const { notes, activeNoteId } = useNoteStore();
   const { memories } = useAgentMemoryStore();
   const activeNote = notes.find(n => n.id === activeNoteId);
 
   const [input, setInput] = useState('');
   const [activeTab, setActiveTab] = useState<'chat' | 'terminal'>('chat');
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Close the project picker when clicking outside.
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setProjectPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
+
+  const activeProject = getActiveProject();
 
   // FR-5: same context both modes use, built fresh before each run.
   const projectCtx = useMemo(
@@ -139,7 +202,8 @@ export default function AgentMode() {
   const handleStart = useCallback(async () => {
     const text = input.trim();
     if (!text || isRunning) return;
-    const workspacePath = activeWorkspaceId ?? '.';
+    const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);
+    const workspacePath = activeWs?.path ?? activeProject?.path ?? '.';
     setInput('');
     await startAgent(
       text,
@@ -148,7 +212,7 @@ export default function AgentMode() {
       projectCtx.context,
       useAgentMemoryStore.getState().autoCapture,
     );
-  }, [input, isRunning, activeWorkspaceId, activeProjectId, startAgent, projectCtx.context]);
+  }, [input, isRunning, activeWorkspaceId, activeProjectId, activeProject?.path, workspaces, startAgent, projectCtx.context]);
 
   const handleStop = useCallback(async () => {
     await stopAgent();
@@ -161,6 +225,14 @@ export default function AgentMode() {
   const handleDeny = useCallback(async () => {
     await denyAction();
   }, [denyAction]);
+
+  const handleSelectProject = useCallback(async (projectId: string, workspaceId: string) => {
+    setProjectPickerOpen(false);
+    if (workspaceId !== activeWorkspaceId) {
+      await selectWorkspace(workspaceId);
+    }
+    await selectProject(projectId);
+  }, [activeWorkspaceId, selectWorkspace, selectProject]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -175,11 +247,64 @@ export default function AgentMode() {
       <div className="agent-left-panel">
         {/* Header */}
         <div className="agent-panel-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <div className={`agent-status-dot ${status}`} />
             <span className="agent-panel-title">Agent</span>
             {goal && <span className="agent-goal-label">{goal.slice(0, 40)}{goal.length > 40 ? '…' : ''}</span>}
           </div>
+
+          {/* Project picker — feed the agent the project you're working on */}
+          <div className="agent-picker-wrap" ref={pickerRef}>
+            <button
+              className="agent-project-picker"
+              onClick={() => setProjectPickerOpen((o) => !o)}
+              aria-haspopup="listbox"
+              aria-expanded={projectPickerOpen}
+              title="Select project the agent works on"
+              disabled={isRunning || isBlocked}
+            >
+              <span className="project-dot" style={{ background: activeProject?.color || 'var(--accent)', flexShrink: 0 }} />
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {activeProject?.name || activeWorkspaceId || 'No project'}
+              </span>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.7 }}>
+                <path d="m1 3 3.5 3.5L8 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {projectPickerOpen && (
+              <div className="agent-picker-menu" role="listbox" aria-label="Projects">
+                {workspaces.length === 0 && (
+                  <div className="agent-picker-empty">No projects yet. Create one first.</div>
+                )}
+                {workspaces.map((ws) => {
+                  const wsProjects = projects.filter((p) => p.workspace_id === ws.id);
+                  return (
+                    <div key={ws.id} className="agent-picker-group">
+                      <div className="agent-picker-label">{ws.name || ws.path}</div>
+                      {wsProjects.map((p) => (
+                        <button
+                          key={p.id}
+                          className={`agent-picker-item ${p.id === activeProjectId && ws.id === activeWorkspaceId ? 'active' : ''}`}
+                          onClick={() => handleSelectProject(p.id, ws.id)}
+                          role="option"
+                          aria-selected={p.id === activeProjectId && ws.id === activeWorkspaceId}
+                        >
+                          <span className="project-dot" style={{ background: p.color || 'var(--accent)' }} />
+                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                          {p.id === activeProjectId && ws.id === activeWorkspaceId && <Icons.Check />}
+                        </button>
+                      ))}
+                      {wsProjects.length === 0 && (
+                        <div className="agent-picker-empty">No projects</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {isDone && (
               <button className="agent-cmd-btn" onClick={clearState}>
@@ -209,7 +334,7 @@ export default function AgentMode() {
               {/* Status area */}
               {status === 'idle' && tasks.length === 0 && (
                 <div className="agent-empty">
-                  <div className="agent-empty-icon">⚡</div>
+                  <div className="agent-empty-icon"><Icons.Sparkles /></div>
                   <div className="agent-empty-title">Agent Mode</div>
                   <div className="agent-empty-desc">
                     Describe a goal and the agent will plan and execute it autonomously using your workspace.
@@ -297,7 +422,8 @@ export default function AgentMode() {
         </div>
       </div>
 
-
+      {/* ── Right: Execution Rail ── */}
+      <ExecutionRail status={status} goal={goal || ''} tasks={tasks} />
     </div>
   );
 }

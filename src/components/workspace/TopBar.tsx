@@ -1,4 +1,6 @@
 import { useAppStore } from '../../store/appStore';
+import VaelonLogo from '../VaelonLogo';
+import { Icons } from '../../lib/icons';
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 const IconMenu = () => (
@@ -29,13 +31,7 @@ const IconSun = () => (
   </svg>
 );
 const IconSettings = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.3"/>
-    <path d="M7 1v1M7 12v1M1 7H2M12 7h1M2.34 2.34l.7.7M10.96 10.96l.7.7M11.66 2.34l-.7.7M3.04 10.96l-.7.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-  </svg>
-);
-const IconVaelon = () => (
-  <svg width="16" height="16" viewBox="0 0 14 14" fill="none"><path d="M7 1 8.3 5H12L9 7.5l1.1 4L7 9.2 3.9 11.5 5 7.5 2 5h3.7L7 1Z" fill="currentColor"/></svg>
+  <Icons.Gear size={14} />
 );
 
 // ── SyncBadge ──────────────────────────────────────────────────────────────────
@@ -52,14 +48,14 @@ function SyncBadge({ state }: { state: SyncState }) {
 }
 
 // ── Breadcrumb ─────────────────────────────────────────────────────────────────
-type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline' | 'memory';
+type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline' | 'memory' | 'agent';
 
 function Breadcrumb({ activeView, documentTitle }: { activeView: ActiveView; documentTitle?: string }) {
   const viewLabels: Record<string, string> = {
     home: 'Home', documents: 'Knowledge', projects: 'Projects', tasks: 'Tasks',
-    research: 'Research', git: 'Git', builds: 'Builds', terminal: 'Terminal',
+    research: 'Research', git: 'Git', terminal: 'Terminal',
     search: 'Search', settings: 'Settings', chatHistory: 'Chat History', graph: 'Graph', timeline: 'Timeline',
-    memory: 'Project Memory',
+    memory: 'Project Memory', agent: 'Agent',
   };
   const viewLabel = viewLabels[activeView] ?? activeView;
   return (
@@ -87,30 +83,20 @@ export default function TopBar({ documentTitle, onSettingsOpen }: TopBarProps) {
   const {
     theme, toggleTheme, toggleSidebar, openCmd,
     rightPanelOpen, toggleRightPanel, syncState, activeView,
-    toggleMobileSidebar, setActiveMode, activeMode,
+    setActiveMode, activeMode, setActiveView,
   } = useAppStore();
 
   return (
     <header className="topbar workspace-topbar" role="banner">
-      {/* Hamburger (mobile) */}
-      <button
-        className="topbar-btn mobile-only"
-        onClick={toggleMobileSidebar}
-        aria-label="Toggle sidebar"
-        id="mobile-sidebar-toggle"
-      >
-        <IconMenu />
-      </button>
-
       {/* Hamburger (desktop collapse) */}
       <button className="topbar-btn" onClick={toggleSidebar} aria-label="Toggle sidebar">
         <IconMenu />
       </button>
 
       {/* Logo */}
-      <div className="topbar-logo">
+      <div className="topbar-logo" onClick={() => setActiveView('home')} title="Vaelon">
         <div className="topbar-logo-icon" aria-hidden="true">
-          <IconVaelon />
+          <VaelonLogo size={15} />
         </div>
         <span className="topbar-logo-text">Vaelon</span>
       </div>
@@ -166,7 +152,7 @@ export default function TopBar({ documentTitle, onSettingsOpen }: TopBarProps) {
           style={rightPanelOpen ? {
             background: 'var(--accent-muted)',
             color: 'var(--accent)',
-            boxShadow: '0 0 12px hsla(258,88%,68%,0.4)',
+            boxShadow: '0 0 14px hsla(248,100%,71%,0.4)',
             borderColor: 'var(--accent-border)'
           } : {}}
         >

@@ -9,7 +9,7 @@ export interface BackgroundServices {
   agent: 'inactive' | 'active' | 'error' | 'starting';
 }
 
-export type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'builds' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline' | 'memory';
+export type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline' | 'memory' | 'agent';
 
 interface AppState {
   theme: 'dark' | 'light';
@@ -33,8 +33,6 @@ interface AppState {
   setActiveMode: (mode: 'knowledge' | 'agent') => void;
   syncState: 'synced' | 'syncing' | 'offline';
   setSyncState: (state: 'synced' | 'syncing' | 'offline') => void;
-  mobileSidebarOpen: boolean;
-  toggleMobileSidebar: () => void;
   backgroundServices: BackgroundServices;
   setBackgroundService: (service: keyof BackgroundServices, status: BackgroundServices[keyof BackgroundServices]) => void;
   activeProjectPath: string | null;
@@ -72,8 +70,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setActiveMode: (mode) => set({ activeMode: mode }),
   syncState: 'synced',
   setSyncState: (s) => set({ syncState: s }),
-  mobileSidebarOpen: false,
-  toggleMobileSidebar: () => set((s) => ({ mobileSidebarOpen: !s.mobileSidebarOpen })),
   backgroundServices: {
     indexer: 'inactive',
     gitWatcher: 'inactive',

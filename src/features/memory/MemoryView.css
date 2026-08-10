@@ -30,7 +30,7 @@
   padding:var(--sp-4);
   border:1px solid var(--warning-border, rgba(245,158,11,.35));
   border-radius:var(--radius-md);
-  background:color-mix(in srgb, var(--warning, #f59e0b) 6%, transparent);
+  background:color-mix(in srgb, var(--warning, #FFB454) 6%, transparent);
 }
 .memory-review-head{display:flex;flex-direction:column;gap:2px}
 .memory-review-title{

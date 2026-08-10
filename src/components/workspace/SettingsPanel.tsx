@@ -1,11 +1,69 @@
 import { useState, useEffect } from 'react';
 import { api, LlmSettings } from '../../ipc/client';
+import { Icons } from '../../lib/icons';
 
-const MODES: { value: LlmSettings['mode']; label: string; icon: string; desc: string }[] = [
-  { value: 'auto',  label: 'Auto',  icon: '⚡', desc: 'Uses Ollama if running, otherwise Groq cloud' },
-  { value: 'local', label: 'Local', icon: '💻', desc: 'Ollama only — fully offline, zero cloud' },
-  { value: 'cloud', label: 'Cloud', icon: '☁️', desc: 'Groq API — fast, requires internet' },
+const MODES: { value: LlmSettings['mode']; label: string; icon: React.ReactNode; desc: string }[] = [
+  { value: 'auto',  label: 'Auto',  icon: <IconAuto />, desc: 'Uses Ollama if running, otherwise Groq cloud' },
+  { value: 'local', label: 'Local', icon: <IconChip />, desc: 'Ollama only — fully offline, zero cloud' },
+  { value: 'cloud', label: 'Cloud', icon: <IconCloud />, desc: 'Groq API — fast, requires internet' },
 ];
+
+function IconAuto() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="2.2" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M7 1.5a5.5 5.5 0 0 1 5.4 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      <path d="M12.5 1.5V6H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function IconChip() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <rect x="4" y="4" width="6" height="6" rx="1.2" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M7 2v2M7 10v2M2 7h2M10 7h2M4 2.5v1.5M4 10v1.5M10 2.5v1.5M10 10v1.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function IconCloud() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M4.3 10.6a2.2 2.2 0 1 1 .4-4.4 3.1 3.1 0 0 1 5.9.7A1.9 1.9 0 0 1 10 10.6H4.3Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+      <path d="M7 2v3.4M5.6 3.6 7 2.2l1.4 1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function IconCore() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="1.6" fill="currentColor"/>
+      <circle cx="7" cy="2.2" r="1" stroke="currentColor" strokeWidth="1.1"/>
+      <circle cx="11.8" cy="5.2" r="1" stroke="currentColor" strokeWidth="1.1"/>
+      <circle cx="11.8" cy="9.8" r="1" stroke="currentColor" strokeWidth="1.1"/>
+      <circle cx="7" cy="12.8" r="1" stroke="currentColor" strokeWidth="1.1"/>
+      <circle cx="2.2" cy="9.8" r="1" stroke="currentColor" strokeWidth="1.1"/>
+      <circle cx="2.2" cy="5.2" r="1" stroke="currentColor" strokeWidth="1.1"/>
+      <path d="M7 3.2v2.2M9.8 4.2l-1.2 1.3M9.8 9.8l-1.2-1.3M7 12v-2.2M4.2 9.8l1.2-1.3M4.2 4.2l1.2 1.3" stroke="currentColor" strokeWidth="1.1" opacity=".55"/>
+    </svg>
+  );
+}
+
+function IconServer() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <rect x="2" y="2" width="10" height="4" rx="1.2" stroke="currentColor" strokeWidth="1.2"/>
+      <rect x="2" y="8" width="10" height="4" rx="1.2" stroke="currentColor" strokeWidth="1.2"/>
+      <path d="M4.5 4h.01M7 4h.01M9.5 4h.01M4.5 10h.01M7 10h.01M9.5 10h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function IconGear() {
+  return <Icons.Gear size={16} />;
+}
 
 interface Props {
   onClose?: () => void;
@@ -71,7 +129,10 @@ export default function SettingsPanel({ onClose }: Props) {
       <div className="settings-panel" role="dialog" aria-label="Settings">
         {/* Header */}
         <div className="settings-header">
-          <h2 className="settings-title">Settings</h2>
+          <div className="settings-header-title">
+            <span className="settings-header-logo"><IconGear /></span>
+            <h2 className="settings-title">Settings</h2>
+          </div>
           <button className="settings-close" onClick={onClose} aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -83,7 +144,7 @@ export default function SettingsPanel({ onClose }: Props) {
           {/* ── AI Engine ── */}
           <section className="settings-section">
             <div className="settings-section-header">
-              <span className="settings-section-icon">🧠</span>
+              <span className="settings-section-icon"><IconCore /></span>
               <div>
                 <div className="settings-section-title">AI Engine</div>
                 <div className="settings-section-desc">Choose where AI processing happens</div>
@@ -107,7 +168,7 @@ export default function SettingsPanel({ onClose }: Props) {
           {/* ── Ollama ── */}
           <section className="settings-section">
             <div className="settings-section-header">
-              <span className="settings-section-icon">🖥️</span>
+              <span className="settings-section-icon"><IconServer /></span>
               <div>
                 <div className="settings-section-title">Ollama (Local AI)</div>
                 <div className="settings-section-desc">Run AI models on your machine</div>
@@ -171,7 +232,7 @@ export default function SettingsPanel({ onClose }: Props) {
           {/* ── Cloud Fallback ── */}
           <section className="settings-section">
             <div className="settings-section-header">
-              <span className="settings-section-icon">☁️</span>
+              <span className="settings-section-icon"><IconCloud /></span>
               <div>
                 <div className="settings-section-title">Cloud Fallback</div>
                 <div className="settings-section-desc">Groq API for when Ollama isn't available</div>
@@ -234,6 +295,14 @@ export default function SettingsPanel({ onClose }: Props) {
           display: flex; align-items: center; justify-content: space-between;
           padding: var(--sp-5) var(--sp-6); border-bottom: 1px solid var(--border-subtle);
         }
+        .settings-header-title { display: flex; align-items: center; gap: var(--sp-3); }
+        .settings-header-logo {
+          width: 34px; height: 34px; border-radius: var(--radius-md);
+          background: var(--bg-elevated); border: 1px solid var(--accent-border);
+          color: var(--accent);
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
         .settings-title {
           margin: 0; font-size: var(--text-lg); font-weight: var(--weight-bold);
           color: var(--tx-primary); font-family: var(--font-heading);
@@ -250,7 +319,7 @@ export default function SettingsPanel({ onClose }: Props) {
         }
         .settings-section { display: flex; flex-direction: column; gap: var(--sp-4); }
         .settings-section-header { display: flex; align-items: flex-start; gap: var(--sp-3); }
-        .settings-section-icon { font-size: 1.125rem; margin-top: 1px; }
+        .settings-section-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--accent-border); color: var(--accent); background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .settings-section-title {
           font-size: var(--text-md); font-weight: var(--weight-semibold);
           color: var(--tx-primary); line-height: 1.3;
@@ -266,9 +335,9 @@ export default function SettingsPanel({ onClose }: Props) {
         }
         .mode-card:hover { border-color: var(--border-strong); background: var(--bg-overlay); }
         .mode-card.active { border-color: var(--accent); background: var(--accent-muted); box-shadow: 0 0 0 1px var(--accent-border); }
-        .mode-card-icon { font-size: 1.25rem; }
+        .mode-card-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border); color: var(--tx-secondary); display: flex; align-items: center; justify-content: center; }
         .mode-card-label { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--tx-primary); }
-        .mode-card.active .mode-card-label { color: var(--accent); }
+        .mode-card.active .mode-card-icon { border-color: var(--accent-border); color: var(--accent); background: var(--accent-muted); }
         .mode-card-desc { font-size: var(--text-xs); color: var(--tx-tertiary); line-height: 1.4; }
         .ollama-status {
           display: flex; align-items: center; justify-content: space-between;

@@ -128,6 +128,9 @@ pub async fn complete_streaming(
 }
 
 /// Non-streaming completion with rate-limit retry. Returns the full text.
+/// Prefers Ollama (Local) or Groq (Cloud) based on `settings.mode`, and
+/// falls back to the other provider when the preferred one is unreachable
+/// (e.g. Ollama not running) or a cloud key is available.
 pub async fn complete(req: LlmRequest, settings: &LlmSettings) -> Result<String> {
     let use_local = match settings.mode {
         LlmMode::Local => true,
@@ -138,9 +141,15 @@ pub async fn complete(req: LlmRequest, settings: &LlmSettings) -> Result<String>
     let max_retries = 3;
     for attempt in 0..=max_retries {
         let result = if use_local {
-            ollama::complete_blocking(&req, settings).await
+            match ollama::complete_blocking(&req, settings).await {
+                Ok(text) => Ok(text),
+                Err(_) => fallback_cloud(&req, settings).await,
+            }
         } else {
-            groq::complete_blocking(&req, settings).await
+            match groq::complete_blocking(&req, settings).await {
+                Ok(text) => Ok(text),
+                Err(_) => fallback_local(&req, settings).await,
+            }
         };
 
         match result {
@@ -162,6 +171,30 @@ pub async fn complete(req: LlmRequest, settings: &LlmSettings) -> Result<String>
     }
 
     Err(anyhow!("LLM call failed after {} retries", max_retries))
+}
+
+async fn fallback_cloud(req: &LlmRequest, settings: &LlmSettings) -> anyhow::Result<String> {
+    if settings.groq_api_key.is_empty() {
+        return Err(anyhow::anyhow!(
+            "Local LLM (Ollama) unavailable at {} and no cloud API key set. \
+             Start Ollama (ollama serve) or set a Groq API key in Settings.",
+            settings.ollama_base_url
+        ));
+    }
+    tracing::warn!("Local LLM unavailable, falling back to Groq");
+    groq::complete_blocking(req, settings).await
+}
+
+async fn fallback_local(req: &LlmRequest, settings: &LlmSettings) -> anyhow::Result<String> {
+    if !ollama::is_available(&settings.ollama_base_url).await {
+        return Err(anyhow::anyhow!(
+            "Cloud LLM unavailable and local Ollama is not running at {}. \
+             Start Ollama (ollama serve) or check your Groq API key in Settings.",
+            settings.ollama_base_url
+        ));
+    }
+    tracing::warn!("Cloud LLM unavailable, falling back to local Ollama");
+    ollama::complete_blocking(req, settings).await
 }
 
 /// Extract suggested wait time from a rate limit error message.

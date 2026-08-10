@@ -56,6 +56,11 @@ Your response MUST NOT contain any other text outside the JSON.
   ]
 }
 
+"dependencies" is an OPTIONAL list of zero-based indices into the "tasks" array.
+For example: "dependencies": [0] means "this task runs only after tasks[0] completes".
+An empty array "dependencies": [] means the task has no prerequisites.
+NEVER use task descriptions or names as dependencies — always use integer indices.
+
 ## Format 3: Done
 {
   "type": "done",
@@ -208,20 +213,18 @@ impl Planner {
         match parsed {
             PlannerResponse::Expand(expand) => {
                 let mut nodes: Vec<TaskNode> = vec![];
-                for task_info in expand.tasks {
+                for task_info in &expand.tasks {
                     let desc = task_info.description.clone();
-                    let mut node = TaskNode::new(task_info.description, task_info.priority);
-                    if let Some(task_action) = task_info.action {
-                        node.action = Some(task_action.into_action_with_description(&desc));
-                    }
-                    // Store dependency indices as placeholder strings
-                    // (caller will resolve indices to task IDs)
-                    for dep_idx in task_info.dependencies {
-                        if dep_idx < nodes.len() {
-                            node.dependencies.push(nodes[dep_idx].id.clone());
-                        }
+                    let mut node = TaskNode::new(task_info.description.clone(), task_info.priority);
+                    if let Some(task_action) = &task_info.action {
+                        node.action = Some(task_action.clone().into_action_with_description(&desc));
                     }
                     nodes.push(node);
+                }
+                // Resolve dependency indices/descriptions to task IDs.
+                for (i, task_info) in expand.tasks.iter().enumerate() {
+                    let ids = resolve_dependencies(&task_info.dependencies, &expand.tasks, &nodes);
+                    nodes[i].dependencies = ids;
                 }
                 Ok(nodes)
             }
@@ -251,7 +254,7 @@ enum PlannerResponse {
     Done(DoneResponse),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 struct ActionResponse {
     action_type: String,
     path: Option<String>,
@@ -294,7 +297,7 @@ struct ExpandResponse {
     tasks: Vec<TaskInfo>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(untagged)]
 enum TaskAction {
     Object(ActionResponse),
@@ -391,19 +394,18 @@ impl Planner {
             }
             PlannerResponse::Expand(expand) => {
                 let mut nodes: Vec<TaskNode> = vec![];
-                for task_info in expand.tasks {
+                for task_info in &expand.tasks {
                     let desc = task_info.description.clone();
-                    let mut node = TaskNode::new(task_info.description, task_info.priority);
-                    if let Some(task_action) = task_info.action {
-                        node.action = Some(task_action.into_action_with_description(&desc));
-                    }
-                    // Store dependency indices as placeholder strings
-                    for dep_idx in task_info.dependencies {
-                        if dep_idx < nodes.len() {
-                            node.dependencies.push(nodes[dep_idx].id.clone());
-                        }
+                    let mut node = TaskNode::new(task_info.description.clone(), task_info.priority);
+                    if let Some(task_action) = &task_info.action {
+                        node.action = Some(task_action.clone().into_action_with_description(&desc));
                     }
                     nodes.push(node);
+                }
+                // Resolve dependency indices/descriptions to task IDs.
+                for (i, task_info) in expand.tasks.iter().enumerate() {
+                    let ids = resolve_dependencies(&task_info.dependencies, &expand.tasks, &nodes);
+                    nodes[i].dependencies = ids;
                 }
                 Ok(InitialPlan::Tasks(nodes))
             }
@@ -446,8 +448,58 @@ struct TaskInfo {
     description: String,
     priority: i32,
     #[serde(default)]
-    dependencies: Vec<usize>,
+    dependencies: Vec<Dependency>,
     action: Option<TaskAction>,
+}
+
+/// A dependency may be written by the model as a zero-based task index (correct)
+/// or as the description text of another task (common model error). We accept both
+/// and resolve descriptions to indices in `resolve_dependencies`.
+#[derive(Debug, Clone)]
+enum Dependency {
+    Index(usize),
+    Description(String),
+}
+
+impl<'de> Deserialize<'de> for Dependency {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Raw {
+            Index(usize),
+            Text(String),
+        }
+        Ok(match Raw::deserialize(deserializer)? {
+            Raw::Index(i) => Dependency::Index(i),
+            Raw::Text(t) => Dependency::Description(t),
+        })
+    }
+}
+
+/// Resolve a task's dependency list to TaskNode ids.
+/// `tasks` must already have all descriptions; nodes are built in order so
+/// `tasks[i]` corresponds to `nodes[i]`.
+fn resolve_dependencies(deps: &[Dependency], tasks: &[TaskInfo], nodes: &[TaskNode]) -> Vec<String> {
+    let mut ids: Vec<String> = vec![];
+    for dep in deps {
+        let target = match dep {
+            Dependency::Index(i) => nodes.get(*i).map(|n| n.id.clone()),
+            Dependency::Description(desc) => tasks
+                .iter()
+                .enumerate()
+                .find(|(_, t)| t.description.trim() == desc.trim())
+                .and_then(|(i, _)| nodes.get(i).map(|n| n.id.clone())),
+        };
+        if let Some(id) = target {
+            if !ids.contains(&id) {
+                ids.push(id);
+            }
+        }
+    }
+    ids
 }
 
 #[derive(Debug, Deserialize)]

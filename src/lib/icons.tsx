@@ -185,4 +185,20 @@ export const Icons = {
       <path d="M7 6.5V10M7 4.2v.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   ),
+  Sparkles: ({ size, className }: IconProps) => (
+    <svg width={s(size)} height={s(size)} viewBox="0 0 14 14" fill="none" className={className}>
+      <path d="M7 2.2 8 5.1l2.9 1-2.9 1L7 10l-1-2.9L3.1 6.1 6 5.1 7 2.2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M11 8.6l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5.5-1.4Z" fill="currentColor" />
+    </svg>
+  ),
+  Gear: ({ size, className }: IconProps) => (
+    <svg width={s(size)} height={s(size)} viewBox="0 0 16 16" fill="none" className={className}>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        fill="currentColor"
+        d="M5.21 1.26 L10.79 1.26 L9.99 3.20 L6.01 3.20 Z M10.79 1.26 L14.74 5.21 L12.80 6.01 L9.99 3.20 Z M14.74 5.21 L14.74 10.79 L12.80 9.99 L12.80 6.01 Z M14.74 10.79 L10.79 14.74 L9.99 12.80 L12.80 9.99 Z M10.79 14.74 L5.21 14.74 L6.01 12.80 L9.99 12.80 Z M5.21 14.74 L1.26 10.79 L3.20 9.99 L6.01 12.80 Z M1.26 10.79 L1.26 5.21 L3.20 6.01 L3.20 9.99 Z M1.26 5.21 L5.21 1.26 L6.01 3.20 L3.20 6.01 Z M8 1.8 A6.2 6.2 0 1 0 8 14.2 A6.2 6.2 0 1 0 8 1.8 Z M8 5.3 A2.7 2.7 0 1 0 8 10.7 A2.7 2.7 0 1 0 8 5.3 Z"
+      />
+    </svg>
+  ),
 };
