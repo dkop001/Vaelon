@@ -19,9 +19,9 @@ const NODE_RADIUS: Record<string, number> = {
 };
 
 const COLORS: Record<string, string> = {
-  directory: '#B79BFF',
-  file: '#7C6CFF',
-  symbol: '#FFB454',
+  directory: '#64D2FF',
+  file: '#0066CC',
+  symbol: '#8E8E93',
 };
 
 const EDGE_OPACITY: Record<string, number> = {
@@ -31,9 +31,9 @@ const EDGE_OPACITY: Record<string, number> = {
 };
 
 const EDGE_COLOR: Record<string, string> = {
-  contains: '#5B6472',
-  defines: '#FFB454',
-  imports: '#4FD1FF',
+  contains: '#A1A1A6',
+  defines: '#DD5B00',
+  imports: '#0066CC',
 };
 
 function buildSim(nodes: GraphNode[], edges: GraphEdge[]): { nodes: SimNode[]; edges: SimEdge[] } {

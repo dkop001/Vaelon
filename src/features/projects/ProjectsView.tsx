@@ -44,17 +44,17 @@ const IconBack = () => (
   </svg>
 );
 
-const COLORS = ['#7C6CFF', '#43D39E', '#FFB454', '#FF647C', '#4FD1FF', '#E07CF0', '#B79BFF', '#C7F464'];
+const COLORS = ['#0066CC', '#1AAE39', '#DD5B00', '#E03131', '#5E5CE6', '#FF2D55', '#64D2FF', '#8E8E93'];
 
 const PALETTE_LABELS: Record<string, string> = {
-  '#7C6CFF': 'Violet',
-  '#43D39E': 'Green',
-  '#FFB454': 'Amber',
-  '#FF647C': 'Red',
-  '#4FD1FF': 'Cyan',
-  '#E07CF0': 'Pink',
-  '#B79BFF': 'Lavender',
-  '#C7F464': 'Lime',
+  '#0066CC': 'Blue',
+  '#1AAE39': 'Green',
+  '#DD5B00': 'Orange',
+  '#E03131': 'Red',
+  '#5E5CE6': 'Indigo',
+  '#FF2D55': 'Pink',
+  '#64D2FF': 'Teal',
+  '#8E8E93': 'Gray',
 };
 
 function timeAgo(iso: string | undefined): string {
@@ -346,7 +346,7 @@ function ProjectDetail({ project, onBack, onEdit }: { project: Project; onBack: 
           <span className="btn-icon"><IconBack /></span>
           All projects
         </button>
-        <span className="project-detail-dot" style={{ background: project.color || '#7c6cf0' }} />
+        <span className="project-detail-dot" style={{ background: project.color || '#0066CC' }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="project-detail-title">{project.name}</div>
           {project.description && (
@@ -574,7 +574,7 @@ export default function ProjectsView() {
                 onKeyDown={(e) => e.key === 'Enter' && openProjectFromCard(p)}
               >
                 <div className="project-card-top">
-                  <span className="project-card-color" style={{ background: p.color || '#7c6cf0' }} />
+                  <span className="project-card-color" style={{ background: p.color || '#0066CC' }} />
                   <div className="project-card-actions" onClick={(e) => e.stopPropagation()}>
                     <button
                       className="btn btn-icon-sm btn-ghost"

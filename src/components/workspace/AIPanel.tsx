@@ -84,17 +84,17 @@ function ChatMessage({ msg, isLast, isLoading }: { msg: MsgItem; isLast: boolean
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexDirection: isAI ? 'row' : 'row-reverse' }}>
       <div style={{
         width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-        background: isAI ? 'var(--grad-brand)' : 'var(--bg-overlay)',
+        background: isAI ? 'var(--accent)' : 'var(--bg-overlay)',
         border: isAI ? 'none' : '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 10, fontWeight: 700, color: isAI ? 'white' : 'var(--tx-secondary)',
-        boxShadow: isAI ? '0 0 10px hsla(248,100%,71%,.35)' : 'none',
+        boxShadow: isAI ? '0 0 10px hsla(211,100%,60%,.25)' : 'none',
       }}>
         {isAI ? '✦' : 'U'}
       </div>
       <div style={{
         maxWidth: '82%',
-        background: isAI ? 'linear-gradient(135deg, var(--accent-muted), var(--bg-elevated))' : 'var(--bg-elevated)',
+        background: isAI ? 'var(--bg-elevated)' : 'var(--bg-elevated)',
         border: `1px solid ${isAI ? 'var(--accent-border)' : 'var(--border-subtle)'}`,
         borderRadius: isAI ? '4px 12px 12px 12px' : '12px 4px 12px 12px',
         padding: '8px 12px',
@@ -505,7 +505,7 @@ export default function AIPanel() {
                   onClick={() => { setChatInput(prompt); chatInputRef.current?.focus(); }}
                   style={{
                     textAlign: 'left', padding: '6px 10px',
-                    borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)',
                     background: 'var(--bg-elevated)', fontSize: 'var(--text-xs)',
                     color: 'var(--tx-secondary)', cursor: 'pointer', transition: 'var(--t-fast)',
                   }}
@@ -607,7 +607,7 @@ export default function AIPanel() {
             </button>
           )}
           {intelError && !intel && (
-            <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 'var(--radius-md)', background: 'color-mix(in srgb, var(--danger) 10%, transparent)', color: 'var(--danger)', fontSize: 'var(--text-xs)' }}>
+            <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 'var(--radius-sm)', background: 'color-mix(in srgb, var(--danger) 10%, transparent)', color: 'var(--danger)', fontSize: 'var(--text-xs)' }}>
               {intelError}
             </div>
           )}

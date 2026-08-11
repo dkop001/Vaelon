@@ -152,7 +152,7 @@ export default function TopBar({ documentTitle, onSettingsOpen }: TopBarProps) {
           style={rightPanelOpen ? {
             background: 'var(--accent-muted)',
             color: 'var(--accent)',
-            boxShadow: '0 0 14px hsla(248,100%,71%,0.4)',
+            boxShadow: '0 0 14px hsla(211,100%,60%,0.25)',
             borderColor: 'var(--accent-border)'
           } : {}}
         >

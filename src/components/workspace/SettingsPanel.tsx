@@ -297,14 +297,14 @@ export default function SettingsPanel({ onClose }: Props) {
         }
         .settings-header-title { display: flex; align-items: center; gap: var(--sp-3); }
         .settings-header-logo {
-          width: 34px; height: 34px; border-radius: var(--radius-md);
+          width: 34px; height: 34px; border-radius: var(--radius-sm);
           background: var(--bg-elevated); border: 1px solid var(--accent-border);
           color: var(--accent);
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
         }
         .settings-title {
-          margin: 0; font-size: var(--text-lg); font-weight: var(--weight-bold);
+          margin: 0; font-size: var(--text-lg); font-weight: var(--weight-semibold);
           color: var(--tx-primary); font-family: var(--font-heading);
         }
         .settings-close {
@@ -341,7 +341,7 @@ export default function SettingsPanel({ onClose }: Props) {
         .mode-card-desc { font-size: var(--text-xs); color: var(--tx-tertiary); line-height: 1.4; }
         .ollama-status {
           display: flex; align-items: center; justify-content: space-between;
-          padding: var(--sp-3) var(--sp-4); border-radius: var(--radius-md);
+          padding: var(--sp-3) var(--sp-4); border-radius: var(--radius-sm);
           background: var(--bg-elevated); border: 1px solid var(--border-subtle);
         }
         .ollama-status-left { display: flex; align-items: center; gap: var(--sp-3); }
@@ -354,7 +354,7 @@ export default function SettingsPanel({ onClose }: Props) {
         .settings-label { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--tx-secondary); }
         .settings-input, .settings-select {
           width: 100%; padding: var(--sp-3) var(--sp-4);
-          border-radius: var(--radius-md); border: 1px solid var(--border);
+          border-radius: var(--radius-sm); border: 1px solid var(--border);
           background: var(--bg-elevated); color: var(--tx-primary);
           font-size: var(--text-sm); font-family: var(--font-sans);
           transition: var(--t-fast); box-sizing: border-box;
@@ -367,9 +367,9 @@ export default function SettingsPanel({ onClose }: Props) {
         .settings-hint a { color: var(--accent); text-decoration: none; }
         .settings-hint a:hover { text-decoration: underline; }
         .settings-footer { display: flex; gap: var(--sp-3); justify-content: flex-end; padding: var(--sp-4) var(--sp-6); border-top: 1px solid var(--border-subtle); background: var(--bg-base); }
-        .settings-btn-secondary { padding: var(--sp-3) var(--sp-5); border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--bg-elevated); color: var(--tx-secondary); font-weight: var(--weight-medium); font-size: var(--text-sm); cursor: pointer; transition: var(--t-fast); font-family: var(--font-sans); }
+        .settings-btn-secondary { padding: var(--sp-3) var(--sp-5); border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-elevated); color: var(--tx-secondary); font-weight: var(--weight-normal); font-size: var(--text-sm); cursor: pointer; transition: var(--t-fast); font-family: var(--font-sans); }
         .settings-btn-secondary:hover { background: var(--bg-hover); color: var(--tx-primary); }
-        .settings-btn-primary { padding: var(--sp-3) var(--sp-5); border-radius: var(--radius-md); border: none; background: var(--accent); color: #fff; font-weight: var(--weight-semibold); font-size: var(--text-sm); cursor: pointer; transition: var(--t-fast); font-family: var(--font-sans); min-width: 110px; text-align: center; }
+        .settings-btn-primary { padding: var(--sp-3) var(--sp-5); border-radius: var(--radius-sm); border: none; background: var(--accent); color: var(--tx-inverse); font-weight: var(--weight-semibold); font-size: var(--text-sm); cursor: pointer; transition: var(--t-fast); font-family: var(--font-sans); min-width: 110px; text-align: center; }
         .settings-btn-primary:hover { background: var(--accent-hover); }
         .settings-btn-sm { padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-surface); color: var(--tx-secondary); font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer; transition: var(--t-fast); font-family: var(--font-sans); }
         .settings-btn-sm:hover { background: var(--bg-hover); color: var(--tx-primary); }

@@ -3,49 +3,62 @@
    ═══════════════════════════════════════════════════════════════ */
 
 .mc-root{
-  max-width:920px;margin:0 auto;
+  max-width:960px;margin:0 auto;
   padding:var(--sp-16) var(--sp-10) var(--sp-20);
   display:flex;flex-direction:column;gap:var(--sp-16);
 }
 
-/* ── Header ── */
-.mc-header{display:flex;flex-direction:column;gap:var(--sp-3)}
+/* ── Header — dark product tile (surface-tile-1) with white text ── */
+.mc-header{
+  position:relative;
+  display:flex;flex-direction:column;gap:var(--sp-3);
+  padding:var(--sp-16) var(--sp-16) var(--sp-12);
+  border-radius:var(--radius-lg);
+  border:1px solid var(--border-subtle);
+  background:#272729;
+  overflow:hidden;
+}
 .mc-brand{
   display:flex;align-items:center;gap:var(--sp-3);
   font-family:var(--font-mono);font-size:var(--text-xs);
-  letter-spacing:.18em;color:var(--tx-tertiary);
+  letter-spacing:.18em;color:#CCCCCC;
+  position:relative;z-index:1;
 }
 .mc-brand-mark{
   width:30px;height:30px;border-radius:var(--radius-sm);
-  background:var(--bg-elevated);border:1px solid var(--accent-border);
-  color:var(--accent);display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:var(--tx-inverse);display:flex;align-items:center;justify-content:center;
 }
-.mc-brand-word{color:var(--tx-primary);font-weight:var(--weight-bold)}
+.mc-brand-word{color:#FFFFFF;font-weight:var(--weight-semibold)}
 .mc-brand-slash{color:var(--accent)}
-.mc-brand-surface{color:var(--tx-tertiary)}
+.mc-brand-surface{color:#9D9DA3}
 .mc-title{
-  font-size:var(--text-5xl);font-weight:var(--weight-black);
-  color:var(--tx-primary);letter-spacing:-.045em;line-height:1;
+  font-size:var(--text-5xl);font-weight:var(--weight-semibold);
+  color:#FFFFFF;letter-spacing:-.028em;line-height:1.07;
   font-family:var(--font-heading);
+  position:relative;z-index:1;
 }
-.mc-subtitle{font-size:var(--text-sm);color:var(--tx-secondary);max-width:520px;line-height:1.7}
-.mc-meta{display:flex;align-items:center;gap:var(--sp-5);flex-wrap:wrap}
+.mc-subtitle{
+  font-size:var(--text-lg);color:#CCCCCC;max-width:560px;line-height:1.47;
+  position:relative;z-index:1;
+}
+.mc-meta{display:flex;align-items:center;gap:var(--sp-5);flex-wrap:wrap;position:relative;z-index:1}
 .mc-tech{display:inline-flex;gap:var(--sp-2);flex-wrap:wrap}
 .mc-tech code{
-  font-family:var(--font-mono);font-size:10px;color:var(--accent-2);
-  background:var(--bg-elevated);border:1px solid var(--border-subtle);
-  padding:2px 8px;border-radius:var(--radius-full);
+  font-family:var(--font-mono);font-size:var(--text-xs);color:#FFFFFF;
+  background:hsla(0,0%,100%,0.08);border:1px solid hsla(0,0%,100%,0.16);
+  padding:2px 8px;border-radius:var(--radius-sm);
 }
 .mc-milestone{
   display:inline-flex;align-items:center;gap:var(--sp-2);
-  font-size:var(--text-xs);color:var(--tx-tertiary);
+  font-size:var(--text-xs);color:#9D9DA3;
   font-family:var(--font-mono);
 }
-.mc-milestone-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-3);box-shadow:0 0 6px var(--accent-3)}
-.mc-actions{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-top:var(--sp-3)}
+.mc-milestone-dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.mc-actions{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-top:var(--sp-3);position:relative;z-index:1}
 .mc-kbd{
-  font-family:var(--font-mono);font-size:9px;color:var(--tx-primary);opacity:.7;
-  padding:1px 6px;border-radius:4px;background:hsla(255,100%,100%,.14);
+  font-family:var(--font-mono);font-size:var(--text-xs);color:#FFFFFF;
+  padding:2px 7px;border-radius:var(--radius-sm);
+  background:hsla(0,0%,100%,0.08);border:1px solid hsla(0,0%,100%,0.16);
 }
 
 /* ── Body ── */
@@ -103,7 +116,7 @@
 .activity-row:hover{background:var(--bg-hover);padding-left:var(--sp-2);padding-right:var(--sp-2)}
 .activity-time{font-size:10px;color:var(--tx-disabled);flex-shrink:0;min-width:42px}
 .activity-kind{
-  font-size:9px;font-weight:var(--weight-bold);letter-spacing:.08em;
+  font-size:9px;font-weight:var(--weight-semibold);letter-spacing:.08em;
   flex-shrink:0;min-width:46px;text-align:center;
 }
 .signal-info{color:var(--accent)}
@@ -129,9 +142,9 @@
 
 /* ── Fresh-project checklist ── */
 .mc-checklist{
-  border:1px solid var(--accent-border);
+  border:1px solid var(--tint-lavender-border);
   border-radius:var(--radius-lg);
-  background:linear-gradient(135deg,rgba(124,108,255,.10),rgba(124,108,255,.02));
+  background:var(--tint-lavender);
   padding:var(--sp-8) var(--sp-10);
   display:flex;flex-direction:column;gap:var(--sp-6);
   animation:animate-fade-in .4s ease both;
@@ -139,29 +152,29 @@
 .mc-checklist-title{
   display:flex;align-items:center;gap:var(--sp-3);
   font-size:var(--text-sm);font-weight:var(--weight-semibold);
-  color:var(--tx-primary);
+  color:var(--tint-ink);
 }
 .mc-checklist-title svg{color:var(--accent)}
 .mc-checklist-steps{display:flex;flex-direction:column;gap:var(--sp-2)}
 .mc-checklist-step{
   display:flex;align-items:center;gap:var(--sp-4);
   width:100%;text-align:left;padding:var(--sp-3) var(--sp-4);
-  border-radius:var(--radius-md);
+  border-radius:var(--radius-sm);
   background:var(--bg-elevated);border:1px solid var(--border-subtle);
-  color:var(--tx-secondary);font-size:var(--text-xs);
+  color:var(--tx-secondary);font-size:var(--text-sm);
   cursor:pointer;transition:var(--t-fast);
 }
-.mc-checklist-step:hover{border-color:var(--accent-border);color:var(--tx-primary);background:var(--bg-focus)}
+.mc-checklist-step:hover{border-color:var(--accent-border);color:var(--tx-primary);background:var(--bg-hover)}
 .mc-checklist-num{
   flex-shrink:0;width:20px;height:20px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:var(--weight-bold);font-family:var(--font-mono);
-  color:var(--accent);background:rgba(124,108,255,.14);
+  font-size:10px;font-weight:var(--weight-semibold);font-family:var(--font-mono);
+  color:var(--accent);background:var(--accent-muted);
 }
-.mc-checklist-step.done .mc-checklist-num{color:var(--success);background:rgba(67,211,158,.14)}
+.mc-checklist-step.done .mc-checklist-num{color:var(--success);background:var(--success-muted)}
 .mc-checklist-label{flex:1;min-width:0}
 .mc-checklist-go{
-  flex-shrink:0;font-size:10px;color:var(--accent);font-weight:var(--weight-medium);
+  flex-shrink:0;font-size:10px;color:var(--accent);font-weight:var(--weight-semibold);
   opacity:.85;
 }
 .mc-checklist-step.done .mc-checklist-go{color:var(--tx-disabled);opacity:.6}
