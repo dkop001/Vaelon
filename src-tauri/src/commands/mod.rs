@@ -13,6 +13,7 @@ use crate::terminal::TerminalManager;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_dialog::DialogExt;
 
 // ── App State ─────────────────────────────────────────────────────────────
 
@@ -92,6 +93,12 @@ pub fn project_meta_set_cmd(
 ) -> Result<ProjectMeta, String> {
     project_meta_set(&state.db, &meta).map_err(|e| e.to_string())?;
     Ok(meta)
+}
+
+#[tauri::command]
+pub fn pick_folder_cmd(app: AppHandle) -> Result<Option<String>, String> {
+    let folder = app.dialog().file().blocking_pick_folder();
+    Ok(folder.map(|p| p.to_string()))
 }
 
 // ── Note Commands ─────────────────────────────────────────────────────────

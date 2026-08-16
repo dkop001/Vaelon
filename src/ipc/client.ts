@@ -225,6 +225,7 @@ export const api = {
   projectUpdate: (project: Project) => invoke<Project>('project_update_cmd', { project }),
   projectMetaGet: (projectId: string) => invoke<ProjectMeta | null>('project_meta_get_cmd', { projectId }),
   projectMetaSet: (meta: ProjectMeta) => invoke<ProjectMeta>('project_meta_set_cmd', { meta }),
+  pickFolder: () => invoke<string | null>('pick_folder_cmd'),
 
   // Notes
   noteList: (workspaceId: string, projectId?: string) => invoke<Note[]>('note_list_cmd', { workspaceId, projectId }),

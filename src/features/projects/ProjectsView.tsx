@@ -38,6 +38,12 @@ const IconEdit = () => (
     <path d="M8.5 1.5 10.5 3.5 4 10l-2.5.5L2 8l6.5-6.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
   </svg>
 );
+const IconFolder = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <path d="M2 4.5h10a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H2a1.5 1.5 0 0 1-1.5-1.5V6a1.5 1.5 0 0 1 1.5-1.5Z" stroke="currentColor" strokeWidth="1.2"/>
+    <path d="M4 4.5V3.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="1.2"/>
+  </svg>
+);
 const IconBack = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
     <path d="M5 1.5 1 6l4 4.5M1 6h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -96,6 +102,15 @@ function ProjectFormModal({ initial, onClose }: ProjectFormModalProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleBrowseFolder = async () => {
+    try {
+      const path = await api.pickFolder();
+      if (path) setFolder(path);
+    } catch {
+      // ignore errors
+    }
+  };
 
   // ── Project Identity fields ──
   const [identityOpen, setIdentityOpen] = useState(false);
@@ -186,14 +201,24 @@ function ProjectFormModal({ initial, onClose }: ProjectFormModalProps) {
         />
 
         <label className="project-field-label" htmlFor="project-folder">Folder</label>
-        <input
-          id="project-folder"
-          className="project-input"
-          placeholder="C:\Users\you\projects\vaelon"
-          value={folder}
-          onChange={(e) => setFolder(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-        />
+        <div className="project-folder-input">
+          <input
+            id="project-folder"
+            className="project-input"
+            placeholder="C:\Users\you\projects\vaelon"
+            value={folder}
+            onChange={(e) => setFolder(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+          />
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm project-folder-browse"
+            onClick={handleBrowseFolder}
+            aria-label="Browse folder"
+          >
+            <IconFolder />
+          </button>
+        </div>
         <p className="project-identity-hint">
           The folder on disk this project lives in. The agent reads this folder before it works.
         </p>

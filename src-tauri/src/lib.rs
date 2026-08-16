@@ -113,6 +113,7 @@ pub fn run() {
             commands::config_set_cmd,
             // Project Intelligence
             commands::project_intelligence_cmd,
+            commands::pick_folder_cmd,
             // Workspace Graph
             commands::graph_scan_cmd,
             commands::graph_query_cmd,
