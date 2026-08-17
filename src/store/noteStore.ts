@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api, Note, SearchResult } from '../ipc/client';
+import { useAppStore } from './appStore';
 
 export type DocumentType = 
   | 'knowledge' 
@@ -68,6 +69,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   error: null,
 
   loadDocuments: async (workspaceId: string, projectId?: string) => {
+    useAppStore.getState().setSyncState('syncing');
     set({ loading: true, error: null });
     try {
       const list = await api.noteList(workspaceId, projectId);
@@ -76,8 +78,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       if (withType.length > 0 && !get().activeDocumentId) {
         set({ activeDocumentId: withType[0].id });
       }
+      useAppStore.getState().setSyncState('synced');
     } catch (err: any) {
       set({ error: err.toString(), loading: false });
+      useAppStore.getState().setSyncState('offline');
     }
   },
 
@@ -86,6 +90,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   createDocument: async (workspaceId: string, projectId: string, title: string, type: DocumentType = 'knowledge') => {
+    useAppStore.getState().setSyncState('syncing');
     set({ loading: true, error: null });
     try {
       const n = await api.noteCreate(workspaceId, projectId, title);
@@ -93,25 +98,31 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       const list = await api.noteList(workspaceId, projectId);
       const withTypes = list.map(n => ({ ...n, type: 'knowledge' as DocumentType }));
       set({ documents: withTypes, activeDocumentId: withType.id, loading: false });
+      useAppStore.getState().setSyncState('synced');
     } catch (err: any) {
       set({ error: err.toString(), loading: false });
+      useAppStore.getState().setSyncState('offline');
     }
   },
 
   updateDocument: async (document: Document) => {
+    useAppStore.getState().setSyncState('syncing');
     try {
       await api.noteUpdate(document);
       set((s) => ({
         documents: s.documents.map((d) => (d.id === document.id ? document : d)),
       }));
+      useAppStore.getState().setSyncState('synced');
     } catch (err: any) {
       set({ error: err.toString() });
+      useAppStore.getState().setSyncState('offline');
     }
   },
 
   deleteDocument: async (id: string) => {
     const activeWs = get().documents[0]?.workspace_id || 'default';
     const activeProj = get().documents[0]?.project_id || 'default';
+    useAppStore.getState().setSyncState('syncing');
     set({ loading: true, error: null });
     try {
       await api.noteDelete(id);
@@ -122,8 +133,10 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         set({ activeDocumentId: withTypes[0]?.id || null });
       }
       set({ loading: false });
+      useAppStore.getState().setSyncState('synced');
     } catch (err: any) {
       set({ error: err.toString(), loading: false });
+      useAppStore.getState().setSyncState('offline');
     }
   },
 

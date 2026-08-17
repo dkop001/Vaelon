@@ -4,8 +4,10 @@ import { useNoteStore } from '../../store/noteStore';
 import { useChatStore } from '../../store/chatStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useAgentMemoryStore } from '../../store/agentMemoryStore';
+import { useDocumentStore } from '../../store/noteStore';
 import { buildProjectContext } from '../../lib/projectContext';
 import { api, onEvent, ProjectIntelligence } from '../../ipc/client';
+import FilePreviewPanel from '../../features/editor/FilePreviewPanel';
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Ico = {
   close: () => (
@@ -110,7 +112,7 @@ function ChatMessage({ msg, isLast, isLoading }: { msg: MsgItem; isLast: boolean
 
 // ── Main AIPanel (Context Panel) ───────────────────────────────────────────
 export default function AIPanel() {
-  const { rightPanelTab, setRightPanelTab, toggleRightPanel, backgroundServices } = useAppStore();
+  const { rightPanelTab, setRightPanelTab, toggleRightPanel, backgroundServices, previewFilePath, previewFileName } = useAppStore();
   const { notes, activeNoteId } = useNoteStore();
   const { activeWorkspaceId, activeProjectId, getActiveWorkspace } = useWorkspaceStore();
   const chatStore = useChatStore();
@@ -309,11 +311,12 @@ export default function AIPanel() {
     setIntelError(null);
   }, [activeWorkspaceId]);
 
-  const TABS: { id: 'context' | 'chat' | 'summary' | 'intel'; label: string }[] = [
+  const TABS: { id: 'context' | 'chat' | 'summary' | 'intel' | 'preview'; label: string }[] = [
     { id: 'context', label: 'Context' },
     { id: 'chat', label: 'Chat' },
     { id: 'summary', label: 'Summary' },
     { id: 'intel', label: 'Intel' },
+    { id: 'preview', label: 'Preview' },
   ];
 
   return (
@@ -671,6 +674,33 @@ export default function AIPanel() {
           )}
         </div>
       )}
+
+      {/* ── Preview Tab ── */}
+      {rightPanelTab === 'preview' && (
+        <FilePreviewPanel
+          filePath={previewFilePath || ''}
+          fileName={previewFileName || 'Unknown'}
+          onClose={() => setRightPanelTab('context')}
+          onOpenInDocuments={handleOpenInDocuments}
+        />
+      )}
     </aside>
   );
 }
+
+const handleOpenInDocuments = async (path: string, name: string) => {
+  const { activeWorkspaceId, activeProjectId } = useWorkspaceStore.getState();
+  const { createDocument, updateDocument, documents } = useDocumentStore.getState();
+  if (activeWorkspaceId && activeProjectId) {
+    try {
+      const content = await api.fsRead(path);
+      await createDocument(activeWorkspaceId, activeProjectId, name, 'knowledge');
+      const newDoc = documents[0];
+      if (newDoc) {
+        await updateDocument({ ...newDoc, content: `<pre>${content.replace(/</g, '<').replace(/>/g, '>')}</pre>` });
+      }
+    } catch (err) {
+      console.error('Failed to open in documents:', err);
+    }
+  }
+};

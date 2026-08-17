@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAppStore, ActiveView } from '../../store/appStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useDocumentStore, Document } from '../../store/noteStore';
 import { api } from '../../ipc/client';
 import ChatHistoryPanel from './ChatHistoryPanel';
 import VaelonLogo from '../VaelonLogo';
+import InlineBanner, { useInlineBanner } from '../../components/ui/InlineBanner';
 
 // ── Inline SVGs ───────────────────────────────────────────────────────────
 const IconHome = () => (
@@ -22,21 +23,6 @@ const IconKnowledge = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
     <rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
     <path d="M4.5 4.5h5M4.5 7h5M4.5 9.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-  </svg>
-);
-const IconTasks = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <path d="M2 3h10M2 7h10M2 11h10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-    <path d="M11 3v8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-  </svg>
-);
-const IconGit = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-    <circle cx="3" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
-    <circle cx="11" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
-    <circle cx="11" cy="3" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
-    <circle cx="3" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.3"/>
-    <path d="M4.5 3h5M4.5 11h5M3 4.5v5M11 4.5v5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
   </svg>
 );
 const IconTerminal = () => (
@@ -98,6 +84,18 @@ const IconFile = () => (
     <path d="M8.5 1v2.5H11" stroke="currentColor" strokeWidth="1.2"/>
   </svg>
 );
+const IconPlus = () => (
+  <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+    <path d="M6.5 1.5v10M1.5 6.5h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+const IconOpenDoc = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <path d="M2 1h5.5L10 3.5V10.5A.5.5 0 0 1 9.5 11h-7A.5.5 0 0 1 2 10.5v-9A.5.5 0 0 1 2.5 1Z" stroke="currentColor" strokeWidth="1.2"/>
+    <path d="M7.5 1v2.5H10" stroke="currentColor" strokeWidth="1.2"/>
+    <path d="M1.5 7.5l3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
 interface NavItem { id: ActiveView | 'chatHistory'; label: string; Icon: React.FC };
 interface NavGroup { group: string; items: NavItem[] };
 
@@ -123,9 +121,7 @@ const NAV_GROUPS: NavGroup[] = [
     group: 'Development',
     items: [
       { id: 'terminal',   label: 'Terminal',        Icon: IconTerminal  },
-      { id: 'git',        label: 'Git',             Icon: IconGit       },
       { id: 'timeline',   label: 'Timeline',        Icon: IconClock     },
-      { id: 'tasks',      label: 'Tasks',           Icon: IconTasks     },
       { id: 'chatHistory', label: 'Chat History',   Icon: IconChat      },
     ],
   },
@@ -143,6 +139,7 @@ interface FileNode {
   is_dir: boolean;
   gitStatus?: string;
   children?: FileNode[];
+  childrenLoaded?: boolean;
 }
 
 function GitBadge({ status }: { status?: string }) {
@@ -150,23 +147,57 @@ function GitBadge({ status }: { status?: string }) {
   return <span className={`file-git-status ${status}`}>{status}</span>;
 }
 
-function FileRow({ node, depth, onOpen }: { node: FileNode; depth: number; onOpen: (path: string) => void }) {
+interface FileRowProps {
+  node: FileNode;
+  depth: number;
+  onOpenFile: (path: string, name: string) => void;
+  onOpenInDocuments: (path: string, name: string) => void;
+  onLoadChildren: (node: FileNode) => Promise<void>;
+}
+
+function FileRow({ node, depth, onOpenFile, onOpenInDocuments, onLoadChildren }: FileRowProps) {
   const [open, setOpen] = useState(depth < 1 && node.is_dir);
+  const [loadingChildren, setLoadingChildren] = useState(false);
+
+  const handleToggleDir = useCallback(async () => {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+    if (nextOpen && node.is_dir && !node.childrenLoaded) {
+      setLoadingChildren(true);
+      try {
+        await onLoadChildren(node);
+      } finally {
+        setLoadingChildren(false);
+      }
+    }
+  }, [open, node.is_dir, node.childrenLoaded, onLoadChildren]);
+
   if (node.is_dir) {
     return (
       <>
         <div
           className="sidebar-item"
           style={{ paddingLeft: `calc(var(--sp-3) + ${depth * 14}px)` }}
-          onClick={() => setOpen((o) => !o)}
+          onClick={handleToggleDir}
           role="button"
         >
           <span className="sidebar-item-icon" style={{ opacity: 0.7 }}><IconFolder /></span>
           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
-          <span style={{ fontSize: 9, color: 'var(--tx-disabled)' }}>{open ? '▾' : '▸'}</span>
+          {loadingChildren ? (
+            <span style={{ fontSize: 9, color: 'var(--accent)' }}>⟳</span>
+          ) : (
+            <span style={{ fontSize: 9, color: 'var(--tx-disabled)' }}>{open ? '▾' : '▸'}</span>
+          )}
         </div>
         {open && node.children?.map((child) => (
-          <FileRow key={child.path} node={child} depth={depth + 1} onOpen={onOpen} />
+          <FileRow 
+            key={child.path} 
+            node={child} 
+            depth={depth + 1} 
+            onOpenFile={onOpenFile}
+            onOpenInDocuments={onOpenInDocuments}
+            onLoadChildren={onLoadChildren}
+          />
         ))}
       </>
     );
@@ -175,12 +206,21 @@ function FileRow({ node, depth, onOpen }: { node: FileNode; depth: number; onOpe
     <div
       className="sidebar-item"
       style={{ paddingLeft: `calc(var(--sp-3) + ${depth * 14}px)` }}
-      onClick={() => onOpen(node.path)}
+      onClick={() => onOpenFile(node.path, node.name)}
       role="button"
     >
       <span className="sidebar-item-icon" style={{ opacity: 0.6 }}><IconFile /></span>
       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
       <GitBadge status={node.gitStatus} />
+      <button
+        className="sidebar-item-action"
+        onClick={(e) => { e.stopPropagation(); onOpenInDocuments(node.path, node.name); }}
+        title="Open in Documents"
+        style={{ opacity: 0.5, padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx-tertiary)' }}
+        aria-label="Open in Documents"
+      >
+        <IconOpenDoc />
+      </button>
     </div>
   );
 }
@@ -190,11 +230,22 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onNewDocument }: SidebarProps) {
-  const { activeView, setActiveView, sidebarMode, setSidebarMode, backgroundServices, setActiveProjectPath } = useAppStore();
+  const { 
+    activeView, 
+    setActiveView, 
+    sidebarMode, 
+    setSidebarMode, 
+    backgroundServices, 
+    setActiveProjectPath,
+    setPreviewFilePath,
+    setPreviewFileName,
+    openRightPanel,
+  } = useAppStore();
   const { workspaces, activeWorkspaceId, selectWorkspace, projects, activeProjectId, selectProject, getActiveProject } = useWorkspaceStore();
   const { documents, activeDocumentId, selectDocument } = useDocumentStore();
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
   const [treeLoading, setTreeLoading] = useState(false);
+  const { banner, showBanner, hideBanner } = useInlineBanner();
 
   const activeWs = workspaces.find((w) => w.id === activeWorkspaceId);
   const activeProject = getActiveProject();
@@ -214,12 +265,15 @@ export default function Sidebar({ onNewDocument }: SidebarProps) {
           entries
             .filter((e) => !['node_modules', '.git', 'dist', '.next', 'target'].includes(e.name))
             .sort((a, b) => Number(b.is_dir) - Number(a.is_dir))
-            .map((e) => ({ name: e.name, path: e.path, is_dir: e.is_dir, children: [] }));
+            .map((e) => ({ name: e.name, path: e.path, is_dir: e.is_dir, children: [], childrenLoaded: false }));
         setFileTree(build(entries));
       })
-      .catch(() => setFileTree([]))
+      .catch((err) => {
+        setFileTree([]);
+        showBanner(err?.message || 'Failed to load file tree', { variant: 'error', title: 'File Tree Error', action: { label: 'Retry', onClick: () => hideBanner() } });
+      })
       .finally(() => setTreeLoading(false));
-  }, [activeWs?.path, setActiveProjectPath]);
+  }, [activeWs?.path, setActiveProjectPath, showBanner, hideBanner]);
 
   const handleSwitchProject = (id: string) => {
     selectProject(id);
@@ -234,6 +288,57 @@ export default function Sidebar({ onNewDocument }: SidebarProps) {
       setActiveView(id);
     }
   };
+
+  const handleOpenFile = (path: string, name: string) => {
+    setPreviewFilePath(path);
+    setPreviewFileName(name);
+    openRightPanel('preview');
+  };
+
+  const handleOpenInDocuments = async (path: string, name: string) => {
+    // Create a new document with the file content
+    const { activeWorkspaceId, activeProjectId } = useWorkspaceStore.getState();
+    const { createDocument } = useDocumentStore.getState();
+    if (activeWorkspaceId && activeProjectId) {
+      try {
+        const content = await api.fsRead(path);
+        await createDocument(activeWorkspaceId, activeProjectId, name, 'knowledge');
+        // The new document becomes active, update its content
+        const { documents: docs } = useDocumentStore.getState();
+        const newDoc = docs[0]; // Most recent
+        if (newDoc) {
+          useDocumentStore.getState().updateDocument({ ...newDoc, content: `<pre>${content.replace(/</g, '<').replace(/>/g, '>')}</pre>` });
+        }
+      } catch (err) {
+        console.error('Failed to open in documents:', err);
+      }
+    }
+  };
+
+  const handleLoadChildren = async (node: FileNode) => {
+    try {
+      const entries = await api.fsList(node.path);
+      const children = entries
+        .filter((e) => !['node_modules', '.git', 'dist', '.next', 'target'].includes(e.name))
+        .sort((a, b) => Number(b.is_dir) - Number(a.is_dir))
+        .map((e) => ({ name: e.name, path: e.path, is_dir: e.is_dir, children: [], childrenLoaded: false }));
+      setFileTree(prev => updateTreeChildren(prev, node.path, children));
+    } catch (err) {
+      console.error('Failed to load children:', err);
+    }
+  };
+
+function updateTreeChildren(nodes: FileNode[], targetPath: string, newChildren: FileNode[]): FileNode[] {
+  return nodes.map(node => {
+    if (node.path === targetPath) {
+      return { ...node, children: newChildren, childrenLoaded: true };
+    }
+    if (node.children && node.children.length > 0) {
+      return { ...node, children: updateTreeChildren(node.children, targetPath, newChildren) };
+    }
+    return node;
+  });
+}
 
   if (sidebarMode === 'chatHistory') {
     return (
@@ -357,6 +462,7 @@ export default function Sidebar({ onNewDocument }: SidebarProps) {
         <div className="sidebar-label">Files</div>
       </div>
       <div className="sidebar-file-tree" role="list" aria-label="Project file tree">
+        {banner && <InlineBanner {...banner} onDismiss={hideBanner} />}
         {treeLoading && (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '16px', color: 'var(--tx-tertiary)' }}>
             <span>Indexing…</span>
@@ -371,7 +477,14 @@ export default function Sidebar({ onNewDocument }: SidebarProps) {
           </p>
         )}
         {!treeLoading && fileTree.map((node) => (
-          <FileRow key={node.path} node={node} depth={0} onOpen={() => setActiveView('terminal')} />
+          <FileRow 
+            key={node.path} 
+            node={node} 
+            depth={0} 
+            onOpenFile={handleOpenFile}
+            onOpenInDocuments={handleOpenInDocuments}
+            onLoadChildren={handleLoadChildren}
+          />
         ))}
       </div>
 
@@ -401,8 +514,8 @@ export default function Sidebar({ onNewDocument }: SidebarProps) {
       )}
 
       <footer className="sidebar-footer">
-        <button className="sidebar-version-tag" style={{ width: '100%', justifyContent: 'center' }} onClick={onNewDocument}>
-          <IconSearch /> Developer OS
+        <button className="sidebar-version-tag" style={{ width: '100%', justifyContent: 'center', gap: 6 }} onClick={onNewDocument}>
+          <IconPlus /> New Document
         </button>
       </footer>
     </aside>

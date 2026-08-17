@@ -1,9 +1,11 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useDocumentStore, Document } from '../../store/noteStore';
 import { useAppStore } from '../../store/appStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { DocumentType } from '../../store/noteStore';
 import RichEditor, { RichEditorHandle } from './RichEditor';
+import InlineBanner, { useInlineBanner } from '../../components/ui/InlineBanner';
+import { useDebouncedCallback } from '../../hooks/useDebouncedCallback';
 
 // ─── Icons ─────────────────────────────────────────────────────────────────────
 const IconUpload      = () => <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 4l3-3 3 3M2 11h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>;
@@ -163,9 +165,10 @@ interface Props {
 }
 
 export default function DocumentWorkspace({ onStatsChange }: Props) {
-  const { documents, activeDocumentId, updateDocument, deleteDocument, togglePin, addTag, removeTag, createDocument } = useDocumentStore();
+  const { documents, activeDocumentId, updateDocument, deleteDocument, togglePin, addTag, removeTag, createDocument, error: docError } = useDocumentStore();
   const { openRightPanel } = useAppStore();
   const { activeWorkspaceId, activeProjectId } = useWorkspaceStore();
+  const { banner, showBanner, hideBanner } = useInlineBanner();
 
   const activeDocument = documents.find(d => d.id === activeDocumentId) ?? null;
 
@@ -178,9 +181,17 @@ export default function DocumentWorkspace({ onStatsChange }: Props) {
   const pdfInputRef   = useRef<HTMLInputElement>(null);
   const editorRef     = useRef<RichEditorHandle>(null);
 
+  // Show inline banner for document store errors
+  useEffect(() => {
+    if (docError) {
+      showBanner(docError, { variant: 'error', title: 'Save Failed', action: { label: 'Retry', onClick: () => hideBanner() } });
+    }
+  }, [docError, showBanner, hideBanner]);
+
   if (!activeDocument) {
     return (
       <div className="empty-state animate-fade-in">
+        {banner && <InlineBanner {...banner} onDismiss={hideBanner} />}
         <div className="empty-state-icon"><IconDocument /></div>
         <div className="empty-state-title">No document selected</div>
         <div className="empty-state-desc">Pick a document from the sidebar or create a new one to start writing.</div>
@@ -204,13 +215,23 @@ export default function DocumentWorkspace({ onStatsChange }: Props) {
     try { return JSON.parse(activeDocument.tags as unknown as string); } catch { return []; }
   })();
 
-  const handleContentChange = useCallback((htmlContent: string, plainText: string) => {
-    updateDocument({ ...activeDocument, content: htmlContent });
-    if (onStatsChange) {
-      const words = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
-      onStatsChange({ wordCount: words, charCount: plainText.length });
-    }
-  }, [activeDocument, updateDocument, onStatsChange]);
+  const activeDocumentIdRef = useRef(activeDocumentId);
+  activeDocumentIdRef.current = activeDocumentId;
+
+  const handleContentChange = useDebouncedCallback(
+    useCallback((htmlContent: string, plainText: string) => {
+      // Only update if the document hasn't changed
+      if (activeDocumentIdRef.current !== activeDocumentId) return;
+      const doc = documents.find(d => d.id === activeDocumentId);
+      if (!doc) return;
+      updateDocument({ ...doc, content: htmlContent });
+      if (onStatsChange) {
+        const words = plainText.trim() ? plainText.trim().split(/\s+/).length : 0;
+        onStatsChange({ wordCount: words, charCount: plainText.length });
+      }
+    }, [activeDocumentId, documents, updateDocument, onStatsChange]),
+    300
+  );
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateDocument({ ...activeDocument, title: e.target.value });
@@ -272,6 +293,7 @@ export default function DocumentWorkspace({ onStatsChange }: Props) {
 
   return (
     <div className="note-workspace animate-fade-in">
+      {banner && <InlineBanner {...banner} onDismiss={hideBanner} />}
       <div className="note-editor-card">
         <div className="note-editor-header">
           <input

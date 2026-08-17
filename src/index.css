@@ -1629,3 +1629,38 @@ h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);letter-spacing:-0.02em}
 .exec-step.fail .exec-step-label{color:var(--danger)}
 .exec-step-detail{font-size:9px;font-family:var(--font-mono);color:var(--tx-tertiary)}
 @keyframes exec-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.65);opacity:.5}}
+
+/* ─── Terminal View ──────────────────────────────────────────────────────────── */
+.terminal-view{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  background:#0c0d12;
+}
+.terminal-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:var(--sp-2) var(--sp-4);
+  border-bottom:1px solid var(--border);
+  background:var(--bg-elevated);
+  flex-shrink:0;
+}
+.terminal-title{
+  font-size:var(--text-sm);
+  font-weight:var(--weight-medium);
+  color:var(--tx-primary);
+  font-family:var(--font-mono);
+}
+.terminal-actions{
+  display:flex;
+  align-items:center;
+  gap:var(--sp-2);
+}
+.terminal-session-select{
+  min-width:160px;
+}
+.terminal-container{
+  flex:1;
+  min-height:0;
+}

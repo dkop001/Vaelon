@@ -13,6 +13,7 @@ import GraphView from './features/graph/GraphView';
 import TimelineView from './features/timeline/TimelineView';
 import SearchPage from './features/search/SearchPage';
 import DocumentWorkspace from './features/editor/DocumentWorkspace';
+import TerminalView from './features/terminal/TerminalView';
 import { useAppStore } from './store/appStore';
 import { useWorkspaceStore } from './store/workspaceStore';
 import { useDocumentStore, DocumentType } from './store/noteStore';
@@ -114,18 +115,6 @@ function AppContent() {
               <MemoryView />
             )}
 
-            {activeView === 'tasks' && (
-              <div className="page-placeholder">Tasks View - Coming Soon</div>
-            )}
-
-            {activeView === 'research' && (
-              <div className="page-placeholder">Research View - Coming Soon</div>
-            )}
-
-            {activeView === 'git' && (
-              <div className="page-placeholder">Git View - Coming Soon</div>
-            )}
-
             {activeView === 'graph' && (
               <GraphView />
             )}
@@ -134,9 +123,9 @@ function AppContent() {
               <TimelineView />
             )}
 
-            {activeView === 'terminal' && (
-              <div className="page-placeholder">Terminal View - Coming Soon</div>
-            )}
+{activeView === 'terminal' && (
+  <TerminalView />
+)}
           </>
         )}
       </div>

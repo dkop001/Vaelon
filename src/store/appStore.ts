@@ -1,6 +1,6 @@
 ﻿import { create } from 'zustand';
 
-export type RightPanelTab = 'chat' | 'summary' | 'intel' | 'context';
+export type RightPanelTab = 'chat' | 'summary' | 'intel' | 'context' | 'preview';
 
 export interface BackgroundServices {
   indexer: 'inactive' | 'active' | 'error' | 'starting';
@@ -9,7 +9,7 @@ export interface BackgroundServices {
   agent: 'inactive' | 'active' | 'error' | 'starting';
 }
 
-export type ActiveView = 'home' | 'documents' | 'projects' | 'tasks' | 'research' | 'git' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline' | 'memory' | 'agent';
+export type ActiveView = 'home' | 'documents' | 'projects' | 'terminal' | 'search' | 'settings' | 'chatHistory' | 'graph' | 'timeline' | 'memory' | 'agent';
 
 interface AppState {
   theme: 'dark' | 'light';
@@ -37,6 +37,10 @@ interface AppState {
   setBackgroundService: (service: keyof BackgroundServices, status: BackgroundServices[keyof BackgroundServices]) => void;
   activeProjectPath: string | null;
   setActiveProjectPath: (path: string | null) => void;
+  previewFilePath: string | null;
+  setPreviewFilePath: (path: string | null) => void;
+  previewFileName: string | null;
+  setPreviewFileName: (name: string | null) => void;
   memoryAddSignal: number;
   triggerMemoryAdd: () => void;
   consumeMemoryAdd: () => number;
@@ -82,6 +86,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   activeProjectPath: null,
   setActiveProjectPath: (path) => set({ activeProjectPath: path }),
+  previewFilePath: null,
+  setPreviewFilePath: (path) => set({ previewFilePath: path }),
+  previewFileName: null,
+  setPreviewFileName: (name) => set({ previewFileName: name }),
   memoryAddSignal: 0,
   triggerMemoryAdd: () => { set((s) => ({ memoryAddSignal: s.memoryAddSignal + 1, activeView: 'memory', sidebarMode: 'nav' })); },
   consumeMemoryAdd: () => {
