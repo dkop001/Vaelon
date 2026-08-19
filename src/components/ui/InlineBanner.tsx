@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 type BannerVariant = 'error' | 'warning' | 'success' | 'info';
 
@@ -157,15 +157,15 @@ export function useInlineBanner() {
     title?: string;
   } | null>(null);
 
-  const showBanner = (message: string, options?: { 
+  const showBanner = useCallback((message: string, options?: { 
     variant?: BannerVariant; 
     action?: { label: string; onClick: () => void };
     title?: string;
   }) => {
     setBanner({ message, variant: options?.variant || 'error', action: options?.action, title: options?.title });
-  };
+  }, []);
 
-  const hideBanner = () => setBanner(null);
+  const hideBanner = useCallback(() => setBanner(null), []);
 
   return { banner, showBanner, hideBanner };
 }
