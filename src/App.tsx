@@ -45,16 +45,20 @@ function AppContent() {
   useEffect(() => {
     if (activeWorkspaceId) {
       let unsubChatPromise = useChatStore.getState().init(activeWorkspaceId);
-      const unsubTerm = useTerminalStore.getState().init();
       const unsubAgent = useAgentStore.getState().init();
 
       return () => {
         unsubChatPromise.then((unsub) => unsub());
-        unsubTerm();
         unsubAgent();
       };
     }
   }, [activeWorkspaceId]);
+
+  // ── Init Terminal Listeners Once ──────────────────────────────────────────
+  useEffect(() => {
+    const unsubTerm = useTerminalStore.getState().init();
+    return () => unsubTerm();
+  }, []);
 
   // ── Active Document Selection Helper ───────────────────────────────────────
   const activeDocument = documents.find((d) => d.id === activeDocumentId);

@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { useTerminalStore } from '../../store/terminalStore';
 import { useAppStore } from '../../store/appStore';
-import { onEvent } from '../../ipc/client';
 import '@xterm/xterm/css/xterm.css';
 
 export default function TerminalView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const currentSessionIdRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
+  const outputIndexRef = useRef(0);
 
   const {
     activeSessionId,
@@ -23,8 +25,7 @@ export default function TerminalView() {
 
   const { activeProjectPath } = useAppStore();
 
-  const [localSessionId, setLocalSessionId] = useState<string | null>(activeSessionId);
-
+  // Initialize xterm once
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -51,99 +52,133 @@ export default function TerminalView() {
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
-    term.open(containerRef.current);
-    fitAddon.fit();
+    
+    const container = containerRef.current;
+    if (container.offsetWidth === 0 || container.offsetHeight === 0) {
+      const observer = new ResizeObserver(() => {
+        if (container.offsetWidth > 0 && container.offsetHeight > 0) {
+          observer.disconnect();
+          term.open(container);
+          fitAddon.fit();
+        }
+      });
+      observer.observe(container);
+    } else {
+      term.open(container);
+      fitAddon.fit();
+    }
 
     termRef.current = term;
     fitAddonRef.current = fitAddon;
+    mountedRef.current = true;
+    outputIndexRef.current = 0;
 
-    let currentSessionId = localSessionId;
-
-    const initSession = async () => {
-      if (!currentSessionId) {
-        try {
-          currentSessionId = await spawnSession(undefined, activeProjectPath || undefined);
-          setLocalSessionId(currentSessionId);
-        } catch (err) {
-          term.write(`\r\n\x1b[31mError spawning terminal session: ${err}\x1b[0m\r\n`);
-          return;
-        }
+    // Handle input
+    term.onData((data) => {
+      const sid = currentSessionIdRef.current;
+      if (sid && mountedRef.current) {
+        writeToSession(sid, data);
       }
+    });
 
-      term.onData((data) => {
-        if (currentSessionId) {
-          writeToSession(currentSessionId, data);
+    const handleResize = () => {
+      if (!mountedRef.current) return;
+      try {
+        fitAddon.fit();
+        const sid = currentSessionIdRef.current;
+        if (sid && term.cols && term.rows) {
+          resizeSession(sid, term.cols, term.rows);
         }
-      });
-
-      const unsubOutput = onEvent<{ id: string; data: string }>(
-        'terminal:output',
-        (payload) => {
-          if (payload.id === currentSessionId) {
-            term.write(payload.data);
-          }
-        }
-      );
-
-      const handleResize = () => {
-        try {
-          fitAddon.fit();
-          if (currentSessionId && term.cols && term.rows) {
-            resizeSession(currentSessionId, term.cols, term.rows);
-          }
-        } catch {}
-      };
-
-      window.addEventListener('resize', handleResize);
-      setTimeout(handleResize, 100);
-
-      (term as any)._unsubOutput = unsubOutput;
-      (term as any)._handleResize = handleResize;
+      } catch {}
     };
 
-    initSession();
+    window.addEventListener('resize', handleResize);
+    setTimeout(handleResize, 100);
+
+    (term as any)._handleResize = handleResize;
 
     return () => {
+      mountedRef.current = false;
       if (termRef.current) {
         const t = termRef.current as any;
-        if (t._unsubOutput) t._unsubOutput();
         if (t._handleResize) window.removeEventListener('resize', t._handleResize);
         termRef.current.dispose();
+        termRef.current = null;
       }
     };
-  }, [localSessionId, activeProjectPath, spawnSession, writeToSession, resizeSession]);
+  }, [writeToSession, resizeSession]);
 
+  // Sync session when activeSessionId changes
   useEffect(() => {
-    if (activeSessionId !== localSessionId) {
-      setLocalSessionId(activeSessionId);
+    if (activeSessionId !== currentSessionIdRef.current) {
+      currentSessionIdRef.current = activeSessionId;
+      outputIndexRef.current = 0; // Reset output index for new session
     }
   }, [activeSessionId]);
 
-  const handleNewSession = async () => {
+  // Write new output from store to terminal
+  useEffect(() => {
+    if (!mountedRef.current || !termRef.current) return;
+    
+    const session = sessions[currentSessionIdRef.current];
+    if (!session) return;
+    
+    const fullOutput = session.output;
+    if (fullOutput.length > outputIndexRef.current) {
+      const newOutput = fullOutput.slice(outputIndexRef.current);
+      outputIndexRef.current = fullOutput.length;
+      termRef.current.write(newOutput);
+    }
+  }, [sessions, activeSessionId]);
+
+  // Auto-spawn session on mount or project path change
+  useEffect(() => {
+    let cancelled = false;
+    
+    const ensureSession = async () => {
+      if (cancelled) return;
+      if (!currentSessionIdRef.current && activeProjectPath) {
+        try {
+          const id = await spawnSession(undefined, activeProjectPath);
+          if (cancelled) return;
+          currentSessionIdRef.current = id;
+          outputIndexRef.current = 0;
+        } catch (err) {
+          if (!cancelled && termRef.current) {
+            termRef.current.write(`\r\n\x1b[31mError spawning terminal: ${err}\x1b[0m\r\n`);
+          }
+        }
+      }
+    };
+
+    ensureSession();
+    return () => { cancelled = true; };
+  }, [activeProjectPath, spawnSession]);
+
+  const handleNewSession = useCallback(async () => {
     try {
       const newId = await spawnSession(undefined, activeProjectPath || undefined);
-      setLocalSessionId(newId);
+      currentSessionIdRef.current = newId;
+      outputIndexRef.current = 0;
     } catch (err) {
       termRef.current?.write(`\r\n\x1b[31mError spawning session: ${err}\x1b[0m\r\n`);
     }
-  };
+  }, [spawnSession, activeProjectPath]);
 
-  const handleKillSession = async (id: string) => {
+  const handleKillSession = useCallback(async (id: string) => {
     await killSession(id);
-    if (localSessionId === id) {
+    if (currentSessionIdRef.current === id) {
       const remainingIds = Object.keys(sessions).filter(s => s !== id);
-      if (remainingIds.length > 0) {
-        setLocalSessionId(remainingIds[0]);
-      } else {
-        setLocalSessionId(null);
-      }
+      currentSessionIdRef.current = remainingIds.length > 0 ? remainingIds[0] : null;
+      outputIndexRef.current = 0;
     }
-  };
+  }, [killSession, sessions]);
 
-  const handleSwitchSession = (id: string) => {
-    setLocalSessionId(id);
+  const handleSwitchSession = useCallback((id: string) => {
+    currentSessionIdRef.current = id;
+    outputIndexRef.current = 0;
     setActiveSession(id);
-  };
+  }, [setActiveSession]);
 
   return (
     <div className="terminal-view">
@@ -153,7 +188,7 @@ export default function TerminalView() {
           {Object.keys(sessions).length > 0 && (
             <select
               className="terminal-session-select"
-              value={localSessionId || ''}
+              value={currentSessionIdRef.current || ''}
               onChange={(e) => e.target.value && handleSwitchSession(e.target.value)}
               style={{
                 padding: '4px 8px',
@@ -183,10 +218,10 @@ export default function TerminalView() {
             </svg>
             New
           </button>
-          {localSessionId && (
+          {currentSessionIdRef.current && (
             <button
               className="btn btn-sm btn-ghost"
-              onClick={() => handleKillSession(localSessionId)}
+              onClick={() => handleKillSession(currentSessionIdRef.current!)}
               title="Kill Session"
               style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--danger)' }}
             >

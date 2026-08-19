@@ -119,6 +119,23 @@ export default function AIPanel() {
   const { createSession, sendMessage } = chatStore;
   const activeNote = notes.find(n => n.id === activeNoteId) ?? null;
 
+  const handleOpenInDocuments = async (path: string, name: string) => {
+    const { activeWorkspaceId, activeProjectId } = useWorkspaceStore.getState();
+    const { createDocument, updateDocument, documents } = useDocumentStore.getState();
+    if (activeWorkspaceId && activeProjectId) {
+      try {
+        const content = await api.fsRead(path);
+        await createDocument(activeWorkspaceId, activeProjectId, name, 'knowledge');
+        const newDoc = documents[0];
+        if (newDoc) {
+          await updateDocument({ ...newDoc, content: `<pre>${content.replace(/</g, '<').replace(/>/g, '>')}</pre>` });
+        }
+      } catch (err) {
+        console.error('Failed to open in documents:', err);
+      }
+    }
+  };
+
   // Chat state
   const [chatMessages, setChatMessages] = useState<MsgItem[]>([
     { role: 'ai', text: "Hi! I'm your AI assistant. Select a document and ask me to summarize it, or ask any question about your project." }
@@ -687,20 +704,3 @@ export default function AIPanel() {
     </aside>
   );
 }
-
-const handleOpenInDocuments = async (path: string, name: string) => {
-  const { activeWorkspaceId, activeProjectId } = useWorkspaceStore.getState();
-  const { createDocument, updateDocument, documents } = useDocumentStore.getState();
-  if (activeWorkspaceId && activeProjectId) {
-    try {
-      const content = await api.fsRead(path);
-      await createDocument(activeWorkspaceId, activeProjectId, name, 'knowledge');
-      const newDoc = documents[0];
-      if (newDoc) {
-        await updateDocument({ ...newDoc, content: `<pre>${content.replace(/</g, '<').replace(/>/g, '>')}</pre>` });
-      }
-    } catch (err) {
-      console.error('Failed to open in documents:', err);
-    }
-  }
-};
