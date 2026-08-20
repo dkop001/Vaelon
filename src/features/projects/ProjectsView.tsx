@@ -168,6 +168,7 @@ function ProjectFormModal({ initial, onClose }: ProjectFormModalProps) {
         if (newProjectId) {
           if (folder.trim()) {
             await updateProject(newProjectId, { path: folder.trim() });
+            await api.createVaelonDocsFolder(folder.trim());
           }
           await saveIdentity(newProjectId);
         }
@@ -508,7 +509,7 @@ export default function ProjectsView() {
       }
     })();
     return () => { cancelled = true; };
-  }, [activeWorkspaceId, projects]);
+  }, [activeWorkspaceId, projects, openProjectId]);
 
   // Reset the open detail when the workspace changes.
   useEffect(() => {

@@ -587,3 +587,12 @@ pub fn memory_delete_cmd(state: State<AppState>, id: String) -> Result<(), Strin
     memory_delete(&state.db, &id).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn create_vaelon_docs_cmd(path: String) -> Result<(), String> {
+    let docs_path = std::path::Path::new(&path).join("vaelon_docs");
+    if !docs_path.exists() {
+        std::fs::create_dir_all(&docs_path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+

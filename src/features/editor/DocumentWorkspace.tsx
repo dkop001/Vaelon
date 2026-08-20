@@ -171,6 +171,7 @@ export default function DocumentWorkspace({ onStatsChange }: Props) {
   const { banner, showBanner, hideBanner } = useInlineBanner();
 
   const activeDocument = documents.find(d => d.id === activeDocumentId) ?? null;
+  const hasContent = !!activeDocument?.content;
 
   const [isExtracting, setIsExtracting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
@@ -294,6 +295,34 @@ export default function DocumentWorkspace({ onStatsChange }: Props) {
   return (
     <div className="note-workspace animate-fade-in">
       {banner && <InlineBanner {...banner} onDismiss={hideBanner} />}
+      {activeDocument && !hasContent && (
+        <div
+          style={{
+            padding: '12px 20px',
+            background: 'var(--accent-muted)',
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: 16,
+            border: '1px solid var(--accent-border)',
+            color: 'var(--tx-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            borderBottom: '1px solid var(--accent-border)',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 'var(--weight-semibold)', marginBottom: 2 }}>This document is empty</div>
+            <div>Start writing to add your first content...</div>
+          </div>
+          <button
+            style={{ marginTop: 0 }}
+            className="btn btn-sm btn-primary"
+            onClick={hideBanner}
+          >
+            Start writing
+          </button>
+        </div>
+      )}
       <div className="note-editor-card">
         <div className="note-editor-header">
           <input
@@ -396,6 +425,16 @@ export default function DocumentWorkspace({ onStatsChange }: Props) {
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
               <IconAI /> AI Summary
+            </button>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() => {
+                openRightPanel('agent');
+                useAppStore.getState().setActiveMode('agent');
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <IconAI /> Agent
             </button>
           </div>
         </div>

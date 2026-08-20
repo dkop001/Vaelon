@@ -279,6 +279,7 @@ export const api = {
   // Config
   configGet: (key: string) => invoke<string | null>('config_get_cmd', { key }),
   configSet: (key: string, value: string) => invoke<void>('config_set_cmd', { key, value }),
+  createVaelonDocsFolder: (projectPath: string) => invoke<string>('create_vaelon_docs_cmd', { projectPath }),
 
   // Project Intelligence
   projectIntelligence: (workspacePath: string) => invoke<ProjectIntelligence>('project_intelligence_cmd', { workspacePath }),

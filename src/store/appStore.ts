@@ -1,6 +1,6 @@
 ﻿import { create } from 'zustand';
 
-export type RightPanelTab = 'chat' | 'summary' | 'intel' | 'context' | 'preview';
+export type RightPanelTab = 'chat' | 'summary' | 'intel' | 'context' | 'preview' | 'agent';
 
 export interface BackgroundServices {
   indexer: 'inactive' | 'active' | 'error' | 'starting';

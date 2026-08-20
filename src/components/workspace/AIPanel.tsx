@@ -328,12 +328,13 @@ export default function AIPanel() {
     setIntelError(null);
   }, [activeWorkspaceId]);
 
-  const TABS: { id: 'context' | 'chat' | 'summary' | 'intel' | 'preview'; label: string }[] = [
+  const TABS: { id: 'context' | 'chat' | 'summary' | 'intel' | 'preview' | 'agent'; label: string }[] = [
     { id: 'context', label: 'Context' },
     { id: 'chat', label: 'Chat' },
     { id: 'summary', label: 'Summary' },
     { id: 'intel', label: 'Intel' },
     { id: 'preview', label: 'Preview' },
+    { id: 'agent', label: 'Agent' },
   ];
 
   return (

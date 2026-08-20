@@ -3,7 +3,6 @@ import { useAppStore } from '../../store/appStore';
 import { useDocumentStore } from '../../store/noteStore';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useAgentStore } from '../../store/agentStore';
-import { useAgentMemoryStore } from '../../store/agentMemoryStore';
 import { Document, DocumentType } from '../../store/noteStore';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -164,7 +163,7 @@ function buildCommands({
 
     { id: 'ai-chat', label: 'Chat with AI', sub: 'Ask about your project', Icon: IconChat, group: 'AI', action: () => openRightPanel('chat') },
     { id: 'ai-summarize', label: 'Summarize Document', sub: 'AI summary of active document', Icon: IconAI, group: 'AI', action: () => openRightPanel('summary') },
-    { id: 'ai-agent', label: 'Run Agent', sub: 'Start autonomous coding agent', Icon: IconAgent, group: 'AI', kbd: ['⌘', '⇧', 'A'], action: () => { setActiveMode('agent'); const ws = useWorkspaceStore.getState(); const mem = useAgentMemoryStore.getState(); startAgent('', ws.activeWorkspaceId ?? '.', ws.activeProjectId ?? undefined, undefined, mem.autoCapture); } },
+    { id: 'ai-agent', label: 'Run Agent', sub: 'Start autonomous coding agent', Icon: IconAgent, group: 'AI', kbd: ['⌘', '⇧', 'A'], action: () => { setActiveMode('agent'); const ws = useWorkspaceStore.getState(); const proj = ws.getActiveProject(); const wp = ws.getActiveWorkspace(); const goal = proj?.name ?? 'Auto-run agent'; const workspacePath = wp?.path ?? ws.activeWorkspaceId ?? '.'; startAgent(goal, workspacePath, proj?.id ?? undefined, undefined); } },
     { id: 'toggle-theme', label: 'Toggle Dark / Light', sub: 'Switch color theme', Icon: IconTheme, group: 'Appearance', kbd: ['⌘', '⇧', 'L'], action: toggleTheme },
     { id: 'mode-knowledge', label: 'Knowledge Mode', sub: 'Documents, research, planning', Icon: IconDocument, group: 'Mode', action: () => setActiveMode('knowledge') },
     { id: 'mode-agent', label: 'Agent Mode', sub: 'Autonomous coding agent', Icon: IconAgent, group: 'Mode', action: () => setActiveMode('agent') },
