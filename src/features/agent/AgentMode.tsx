@@ -154,7 +154,7 @@ export default function AgentMode() {
   const {
     status, goal, tasks, toolCalls,
     filesCreatedCount, filesModifiedCount, tasksTotal, errorCount,
-    blockedReason,
+    blockedReason, approvedPolicy, setApprovedPolicy,
     startAgent, stopAgent, approveAction, denyAction, clearState,
   } = useAgentStore();
 
@@ -218,9 +218,12 @@ export default function AgentMode() {
     await stopAgent();
   }, [stopAgent]);
 
-  const handleApprove = useCallback(async () => {
+  const handleApprove = useCallback(async (policy?: 'once' | 'task' | 'always') => {
+    if (policy) {
+      setApprovedPolicy(policy);
+    }
     await approveAction();
-  }, [approveAction]);
+  }, [approveAction, setApprovedPolicy]);
 
   const handleDeny = useCallback(async () => {
     await denyAction();
@@ -359,10 +362,38 @@ export default function AgentMode() {
                     <Icons.Alert /> Approval Required
                   </div>
                   <div className="agent-blocked-reason">{blockedReason}</div>
+                  <div className="agent-blocked-policy">
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--tx-tertiary)', marginBottom: 4 }}>
+                      Approval policy:{' '}
+                      {(['once', 'task', 'always'] as const).map((p) => (
+                        <span
+                          key={p}
+                          onClick={() => setApprovedPolicy(p)}
+                          style={{
+                            marginRight: 8,
+                            cursor: 'pointer',
+                            textDecoration: approvedPolicy === p ? 'none' : 'underline',
+                            fontWeight: approvedPolicy === p ? 600 : 400,
+                            color: approvedPolicy === p ? 'var(--accent)' : 'var(--tx-secondary)',
+                          }}
+                        >
+                          {p}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="agent-approve-btn" onClick={handleApprove}>
-                      ✓ Approve
+                    <button className="agent-approve-btn" onClick={() => handleApprove('once')}>
+                      ✓ Approve once
                     </button>
+                    <button className="agent-approve-btn" onClick={() => handleApprove('task')}>
+                      ✓ Approve for task
+                    </button>
+                    <button className="agent-approve-btn" onClick={() => handleApprove('always')}>
+                      ✓ Always allow
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button className="agent-cmd-stop" onClick={handleDeny} style={{ flex: 1 }}>
                       ✕ Deny
                     </button>

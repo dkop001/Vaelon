@@ -28,7 +28,7 @@ pub mod verifier;
 pub mod recovery;
 
 use crate::agent::{
-    actions::{Action, ActionType},
+    actions::{Action, ActionType, ApprovalPolicy},
     roles::planner::{InitialPlan, Planner},
     task_graph::{Scheduler, TaskGraph, TaskStatus},
     worker::Worker,
@@ -290,12 +290,15 @@ impl AgentManager {
         self.workers.remove(run_id);
     }
 
-    /// Approve a blocked action.
-    pub fn approve(&self, action_id: &str) {
-        if let Some((_, sender)) = self.pending_approvals.remove(action_id) {
-            let _ = sender.send(());
-        }
+/// Approve a blocked action.
+/// `policy` is the user's chosen approval policy (once/task), or None if the
+/// action should be unblocked without a specific policy (e.g. "always").
+pub fn approve(&self, action_id: &str, _policy: Option<&str>) {
+    if let Some((_, sender)) = self.pending_approvals.remove(action_id) {
+        // Policy is already set via frontend setApprovedPolicy — no need to send through channel
+        let _ = sender;
     }
+}
 
     /// Deny a blocked action — drops the pending channel so the agent
     /// treats it as denied and moves on.
@@ -508,7 +511,7 @@ async fn agent_loop(
         // Execute via Worker
         // Gate risky actions behind user approval.
         let blocked_action = task.action.clone();
-        let needs_approval_now = blocked_action.as_ref().map(|a| needs_approval(&a.action_type)).unwrap_or(false);
+        let needs_approval_now = blocked_action.as_ref().map(|a| needs_approval(a)).unwrap_or(false);
         if needs_approval_now {
             if let Some(action) = &blocked_action {
                 let _ = app.emit("agent:task_update", AgentTaskUpdateEvent {
@@ -561,7 +564,7 @@ async fn agent_loop(
                 ws.workspace_path.clone()
             };
             let action = task.action.as_ref().cloned().unwrap_or_else(|| {
-                Action { id: String::new(), action_type: ActionType::Think, path: None, content: None, command: None, cwd: None, query: None, description: "verify task".into(), thought: None, retry_count: 0 }
+                Action { id: String::new(), action_type: ActionType::Think, approval_policy: ApprovalPolicy::Once, path: None, content: None, command: None, cwd: None, query: None, description: "verify task".into(), thought: None, retry_count: 0 }
             });
             let verification = Verifier::verify(&workspace_path, &action).await;
 
@@ -785,8 +788,13 @@ async fn state_available(state: &Arc<Mutex<WorldState>>) -> bool {
 }
 
 /// Actions that require explicit user approval before executing.
-fn needs_approval(action_type: &ActionType) -> bool {
-    matches!(action_type, ActionType::DeleteFile | ActionType::RunCommand)
+fn needs_approval(action: &Action) -> bool {
+    // If policy is "always", never require approval
+    if matches!(action.approval_policy, ApprovalPolicy::Always) {
+        return false;
+    }
+    // "once" and "task" require approval at least once
+    matches!(action.approval_policy, ApprovalPolicy::Once | ApprovalPolicy::Task)
 }
 
 /// Request user approval for a risky action. Emits `agent:blocked` and waits.
@@ -801,6 +809,13 @@ async fn request_approval(
     let (tx, rx) = tokio::sync::oneshot::channel::<()>();
     pending_approvals.insert(action_id.clone(), tx);
 
+    let policy_str = match action.approval_policy {
+        ApprovalPolicy::Once => "once",
+        ApprovalPolicy::Task => "task",
+        ApprovalPolicy::Always => "always",
+    }
+    .to_string();
+
     let reason = match action.action_type {
         ActionType::DeleteFile => format!("Delete file: {}", action.path.as_deref().unwrap_or("unknown")),
         ActionType::RunCommand => format!("Run command: {}", action.command.as_deref().unwrap_or("unknown")),
@@ -811,6 +826,7 @@ async fn request_approval(
         "run_id": run_id,
         "action_id": action_id,
         "reason": reason,
+        "approval_policy": policy_str,
     }));
 
     // Wait for approval (approve) or for the entry to be removed (deny/stop).

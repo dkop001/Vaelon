@@ -436,8 +436,8 @@ pub fn agent_stop_cmd(state: State<AppState>, run_id: String) {
 }
 
 #[tauri::command]
-pub fn agent_approve_cmd(state: State<AppState>, action_id: String) {
-    state.agent_manager.approve(&action_id);
+pub fn agent_approve_cmd(state: State<AppState>, action_id: String, policy: Option<String>) {
+    state.agent_manager.approve(&action_id, policy.as_deref());
 }
 
 #[tauri::command]

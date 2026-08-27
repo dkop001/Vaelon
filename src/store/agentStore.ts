@@ -45,6 +45,7 @@ interface AgentState {
   currentFocus: string;
   blockedActionId: string | null;
   blockedReason: string | null;
+  approvedPolicy: 'once' | 'task' | 'always' | null;
   loading: boolean;
 
   init: () => () => void;
@@ -52,6 +53,7 @@ interface AgentState {
   stopAgent: () => Promise<void>;
   approveAction: () => Promise<void>;
   denyAction: () => Promise<void>;
+  setApprovedPolicy: (policy: 'once' | 'task' | 'always') => void;
   clearState: () => void;
 }
 
@@ -70,6 +72,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   currentFocus: '',
   blockedActionId: null,
   blockedReason: null,
+  approvedPolicy: null,
   loading: false,
 
   init: () => {
@@ -255,6 +258,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       await api.agentDeny(actionId);
       set({ blockedActionId: null, blockedReason: null, status: 'running' });
     } catch {}
+  },
+
+  setApprovedPolicy: (policy: 'once' | 'task' | 'always') => {
+    set({ approvedPolicy: policy });
   },
 
   clearState: () => {

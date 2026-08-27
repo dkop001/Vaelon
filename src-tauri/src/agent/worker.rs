@@ -3,8 +3,7 @@
 // Worker decides: Need file → Read → Modify → Compile → Run → Fix → Repeat.
 // Self-healing: failure → collect → diagnose → retry → verify → continue.
 
-use crate::agent::actions::{Action, ActionType, ToolResult};
-use crate::agent::world_state::{self, ToolCall, WorldState};
+use crate::agent::{actions::{Action, ActionType, ApprovalPolicy, ToolResult}, world_state::{self, ToolCall, WorldState}};
 use crate::agent::task_graph::TaskNode;
 use crate::fs;
 use std::sync::Arc;
@@ -342,6 +341,7 @@ fn diagnose(action: &Action, result: &ToolResult) -> Vec<Action> {
                         format!("npm install {}", module),
                         action.cwd.clone(),
                         format!("Install missing module: {}", module),
+                        ApprovalPolicy::Once,
                     ));
                 }
             }
@@ -349,13 +349,14 @@ fn diagnose(action: &Action, result: &ToolResult) -> Vec<Action> {
                 repairs.push(Action::think(format!(
                     "Command not found: {}. Need to install it or use an alternative.",
                     action.command.as_deref().unwrap_or("?")
-                )));
+                ), ApprovalPolicy::Once));
             }
             if error.contains("Permission denied") || error.contains("EACCES") {
                 repairs.push(Action::run_command(
                     format!("chmod +x {}", action.command.as_deref().unwrap_or(".")),
                     action.cwd.clone(),
                     "Fix permissions",
+                    ApprovalPolicy::Once,
                 ));
             }
         }
@@ -367,6 +368,7 @@ fn diagnose(action: &Action, result: &ToolResult) -> Vec<Action> {
                             format!("mkdir -p \"{}\"", parent.display()),
                             None,
                             format!("Create parent directories for {}", path),
+                            ApprovalPolicy::Once,
                         ));
                     }
                 }

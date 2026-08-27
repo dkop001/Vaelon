@@ -34,10 +34,24 @@ impl AsRef<str> for ActionType {
     }
 }
 
+/// Approval policy for agent actions.
+/// - once:   approve this exact command only; subsequent similar commands need approval
+/// - task:   approve for this entire agent run/task; subsequent commands may proceed
+/// - always: auto-allow safe commands (e.g. package installation) without per-command approval
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ApprovalPolicy {
+    Once,
+    Task,
+    Always,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
     pub id: String,
     pub action_type: ActionType,
+    /// Approval policy: once/task/always
+    pub approval_policy: ApprovalPolicy,
     /// File path (for file operations)
     pub path: Option<String>,
     /// File content (for WRITE_FILE / EDIT_FILE) — planner includes this directly
@@ -57,10 +71,11 @@ pub struct Action {
 }
 
 impl Action {
-    pub fn new(action_type: ActionType, description: impl Into<String>) -> Self {
+    pub fn new(action_type: ActionType, description: impl Into<String>, approval_policy: ApprovalPolicy) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             action_type,
+            approval_policy,
             path: None,
             content: None,
             command: None,
@@ -72,36 +87,38 @@ impl Action {
         }
     }
 
-    pub fn write_file(path: impl Into<String>, content: impl Into<String>, desc: impl Into<String>) -> Self {
+    pub fn write_file(path: impl Into<String>, content: impl Into<String>, desc: impl Into<String>, approval_policy: ApprovalPolicy) -> Self {
         Self {
             action_type: ActionType::WriteFile,
             path: Some(path.into()),
             content: Some(content.into()),
             description: desc.into(),
-            ..Self::new(ActionType::WriteFile, "")
+            approval_policy: approval_policy.clone(),
+            ..Self::new(ActionType::WriteFile, "", approval_policy)
         }
     }
 
-    pub fn run_command(command: impl Into<String>, cwd: Option<String>, desc: impl Into<String>) -> Self {
+    pub fn run_command(command: impl Into<String>, cwd: Option<String>, desc: impl Into<String>, approval_policy: ApprovalPolicy) -> Self {
         Self {
             action_type: ActionType::RunCommand,
             command: Some(command.into()),
             cwd,
             description: desc.into(),
-            ..Self::new(ActionType::RunCommand, "")
+            approval_policy: approval_policy.clone(),
+            ..Self::new(ActionType::RunCommand, "", approval_policy)
         }
     }
 
-    pub fn think(description: impl Into<String>) -> Self {
+    pub fn think(description: impl Into<String>, approval_policy: ApprovalPolicy) -> Self {
         Self {
             action_type: ActionType::Think,
             description: description.into(),
-            ..Self::new(ActionType::Think, "")
+            ..Self::new(ActionType::Think, "", approval_policy.clone())
         }
     }
 
-    pub fn done() -> Self {
-        Self::new(ActionType::Done, "Goal completed")
+    pub fn done(approval_policy: ApprovalPolicy) -> Self {
+        Self::new(ActionType::Done, "Goal completed", approval_policy)
     }
 }
 

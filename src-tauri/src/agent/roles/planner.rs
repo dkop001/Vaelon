@@ -8,7 +8,7 @@
 //   - recovery: Replan after a failure or deadlock
 //   - incremental: Refine plan when workspace changes
 
-use crate::agent::actions::{Action, ActionType};
+use crate::agent::{actions::{Action, ActionType, ApprovalPolicy}};
 use crate::agent::task_graph::TaskNode;
 use crate::agent::world_state::WorldState;
 use crate::llm::{complete, LlmMessage, LlmRequest, LlmSettings};
@@ -124,14 +124,13 @@ impl Planner {
                     other            => return Err(anyhow::anyhow!("Unknown action type: {}", other)),
                 };
 
-                let mut action = Action::new(action_type, response.description.unwrap_or_default());
+let mut action = Action::new(action_type, response.description.unwrap_or_default(), ApprovalPolicy::Once);
                 action.path    = response.path;
                 action.content = response.content;
                 action.command = response.command;
                 action.cwd     = response.cwd;
                 action.query   = response.query;
                 action.thought = response.thought;
-
                 Ok(action)
             }
             PlannerResponse::Expand(expand) => {
@@ -155,14 +154,14 @@ impl Planner {
                     if let Some(act) = first_task.action {
                         Ok(act.into_action_with_description(&first_task.description))
                     } else {
-                        Ok(Action::new(ActionType::Think, first_task.description))
+                        Ok(Action::new(ActionType::Think, first_task.description, ApprovalPolicy::Once))
                     }
                 } else {
-                    Ok(Action::new(ActionType::Think, "No tasks to expand — need to replan"))
+                    Ok(Action::new(ActionType::Think, "No tasks to expand — need to replan", ApprovalPolicy::Once))
                 }
             }
             PlannerResponse::Done(done) => {
-                let mut action = Action::done();
+                let mut action = Action::done(ApprovalPolicy::Once);
                 action.thought = done.thought;
                 Ok(action)
             }
@@ -280,7 +279,7 @@ impl ActionResponse {
             "DONE" => ActionType::Done,
             _ => ActionType::Think,
         };
-        let mut a = Action::new(action_type, self.description.unwrap_or_default());
+        let mut a = Action::new(action_type, self.description.unwrap_or_default(), ApprovalPolicy::Once);
         a.path = self.path;
         a.content = self.content;
         a.command = self.command;
@@ -328,7 +327,7 @@ impl TaskAction {
                     _ => ActionType::Think,
                 };
 
-                let mut action = Action::new(action_type, format!("Task: {}", name));
+                let mut action = Action::new(action_type, format!("Task: {}", name), ApprovalPolicy::Once);
 
                 if is_file_op {
                     if let Some(path) = extract_path_from_description(description) {
