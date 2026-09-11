@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useNoteStore } from '../../store/noteStore';
 import { useChatStore } from '../../store/chatStore';
@@ -95,7 +95,7 @@ function ChatMessage({ msg, isLast, isLoading }: { msg: MsgItem; isLast: boolean
 
 // ── Main AIPanel (Context Panel) ───────────────────────────────────────────
 export default function AIPanel() {
-  const { rightPanelTab, setRightPanelTab, toggleRightPanel, backgroundServices, previewFilePath, previewFileName } = useAppStore();
+  const { rightPanelTab, setRightPanelTab, toggleRightPanel, previewFilePath, previewFileName } = useAppStore();
   const { notes, activeNoteId } = useNoteStore();
   const { activeWorkspaceId, activeProjectId, getActiveWorkspace } = useWorkspaceStore();
   const chatStore = useChatStore();
@@ -139,24 +139,7 @@ export default function AIPanel() {
   const [intelError, setIntelError] = useState<string | null>(null);
 
   // Agent memories
-  const { memories, loadMemories } = useAgentMemoryStore();
-  const projectMeta = useWorkspaceStore((s) => s.projectMeta);
-
-  // FR-6: exactly what the model receives, kept live for the Context tab.
-  const projectCtx = useMemo(
-    () => buildProjectContext(activeNote),
-    [activeNote, projectMeta, memories]
-  );
-  const [ctxOpen, setCtxOpen] = useState(false);
-
   const activeWs = getActiveWorkspace();
-
-  // Load memories when the workspace changes
-  useEffect(() => {
-    if (activeWorkspaceId) {
-      loadMemories(activeProjectId ?? '', activeWorkspaceId);
-    }
-  }, [activeWorkspaceId, activeProjectId, loadMemories]);
 
   // Auto-load Project DNA on workspace change
   useEffect(() => {
@@ -355,29 +338,6 @@ export default function AIPanel() {
       {/* ── Context Tab ── */}
       {rightPanelTab === 'context' && (
         <div className="ai-panel-body">
-          {/* Background services */}
-          <div className="summary-card">
-            <div className="summary-header">
-              <div className="summary-title"><Ico.ai /> Background Services</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 'var(--sp-3) var(--sp-4)' }}>
-              {(Object.keys(backgroundServices) as (keyof typeof backgroundServices)[]).map((svc) => {
-                const status = backgroundServices[svc];
-                const label = svc === 'gitWatcher' ? 'Git Watcher' : svc === 'buildWatcher' ? 'Build Watcher' : svc === 'indexer' ? 'File Indexer' : 'Agent';
-                return (
-                  <div key={svc} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className={`live-badge ${status}`} style={{ flexShrink: 0 }}>
-                      <span className="dot" />
-                      {status === 'active' ? 'Live' : status === 'starting' ? 'Starting' : status === 'error' ? 'Error' : 'Idle'}
-                    </span>
-                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--tx-secondary)' }}>{label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Project DNA summary */}
           {activeWs ? (
             intel ? (
               <div className="summary-card">
@@ -418,75 +378,9 @@ export default function AIPanel() {
           ) : (
             <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--tx-tertiary)', fontSize: 'var(--text-sm)' }}>
               <div style={{ fontSize: 26, marginBottom: 8, opacity: .4 }}>✦</div>
-              Open a project to see its architecture DNA.
+              Open a project to see its context.
             </div>
           )}
-
-          {/* Live context (FR-6) */}
-          <div className="summary-card">
-            <div className="summary-header">
-              <div className="summary-title"><Ico.ai /> Live Context</div>
-              <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => setCtxOpen((v) => !v)}>
-                {ctxOpen ? 'Hide' : 'Show'}
-              </button>
-            </div>
-            <div style={{ padding: 'var(--sp-3) var(--sp-4)', fontSize: 'var(--text-xs)', color: 'var(--tx-secondary)', lineHeight: 1.6 }}>
-              {(() => {
-                const parts: string[] = [];
-                if (projectCtx.report.identity) parts.push('project identity');
-                if (projectCtx.report.memoryIncluded > 0) parts.push(`${projectCtx.report.memoryIncluded} memories`);
-                if (projectCtx.report.documentIncluded) parts.push('active document');
-                if (parts.length === 0) return 'No project context. Open a project or add memory to ground the AI.';
-                return (
-                  <>
-                    <div>Sent with every message: <strong style={{ color: 'var(--tx-primary)' }}>{parts.join(', ')}</strong></div>
-                    {projectCtx.report.memoryOmitted > 0 && (
-                      <div style={{ color: 'var(--warning)', marginTop: 4 }}>
-                        {projectCtx.report.memoryOmitted} older memories omitted for space.
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-              {ctxOpen && projectCtx.context && (
-                <pre style={{ maxHeight: 260, overflow: 'auto', margin: '8px 0 0', padding: 10, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', fontFamily: 'var(--font-mono, monospace)', fontSize: 10, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {projectCtx.context}
-                </pre>
-              )}
-            </div>
-          </div>
-
-          {/* Recent memories */}
-          <div className="summary-card">
-            <div className="summary-header">
-              <div className="summary-title"><Ico.ai /> Memories</div>
-              <button
-                onClick={() => useAppStore.getState().setActiveView('memory')}
-                className="btn btn-sm btn-ghost"
-                style={{ marginLeft: 'auto' }}
-              >
-                View all
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 'var(--sp-3) var(--sp-4)' }}>
-              {memories.length === 0 && (
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--tx-tertiary)', padding: '8px 0' }}>
-                  No memories yet. They'll appear as the agent learns about this project.
-                </div>
-              )}
-              {memories.slice(0, 8).map((m) => (
-                <div key={m.id} style={{ fontSize: 'var(--text-xs)', color: 'var(--tx-secondary)', lineHeight: 1.5 }}>
-                  <span style={{ color: 'var(--accent)', fontWeight: 600, textTransform: 'uppercase', fontSize: 9 }}>{m.type}</span>
-                  {m.source && m.source !== 'user-confirmed' && (
-                    <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 600, textTransform: 'uppercase', color: 'var(--warning)' }}>
-                      {m.source === 'ai-inferred' ? 'ai' : 'auto'}
-                    </span>
-                  )}
-                  <div style={{ marginTop: 2 }}>{m.value.slice(0, 90)}{m.value.length > 90 ? '…' : ''}</div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 

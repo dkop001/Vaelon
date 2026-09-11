@@ -31,39 +31,20 @@ function AppContent() {
   const [splashDone, setSplashDone] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(onboardingComplete);
 
-  // ── Init Workspace State on Mount ──────────────────────────────────────────
+  // ── ALL hooks must be declared unconditionally before any returns ──────────
+
   useEffect(() => {
     initWorkspaces()
       .then(() => setTimeout(() => setSplashDone(true), 600))
       .catch(() => setSplashDone(true));
   }, []);
 
-  const handleSplashComplete = useCallback(() => {
-    setSplashDone(true);
-  }, []);
-
-  const handleOnboardingComplete = useCallback(() => {
-    setOnboardingDone(true);
-  }, []);
-
-  // ── Show splash while loading ──────────────────────────────────────────────
-  if (!splashDone) {
-    return <SplashScreen onComplete={handleSplashComplete} />;
-  }
-
-  // ── Show onboarding if not completed and no workspaces ─────────────────────
-  if (!onboardingDone && workspaces.length === 0) {
-    return <OnboardingWizard onComplete={handleOnboardingComplete} />;
-  }
-
-  // ── Load Documents when Workspace or Project changes ───────────────────────
   useEffect(() => {
     if (activeWorkspaceId) {
       useDocumentStore.getState().loadDocuments(activeWorkspaceId, activeProjectId || undefined);
     }
   }, [activeWorkspaceId, activeProjectId]);
 
-  // ── Init Chat, Terminal, and Agent Listeners on Workspace Load ─────────────
   useEffect(() => {
     if (activeWorkspaceId) {
       let unsubChatPromise = useChatStore.getState().init(activeWorkspaceId);
@@ -76,13 +57,19 @@ function AppContent() {
     }
   }, [activeWorkspaceId]);
 
-  // ── Init Terminal Listeners Once ──────────────────────────────────────────
   useEffect(() => {
     const unsubTerm = useTerminalStore.getState().init();
     return () => unsubTerm();
   }, []);
 
-  // ── Active Document Selection Helper ───────────────────────────────────────
+  const handleSplashComplete = useCallback(() => {
+    setSplashDone(true);
+  }, []);
+
+  const handleOnboardingComplete = useCallback(() => {
+    setOnboardingDone(true);
+  }, []);
+
   const activeDocument = documents.find((d) => d.id === activeDocumentId);
 
   const handleCreateDocument = async (type: DocumentType = 'knowledge') => {
@@ -91,6 +78,16 @@ function AppContent() {
       setActiveView('documents');
     }
   };
+
+  // ── Now safe to conditionally render ────────────────────────────────────────
+
+  if (!splashDone) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
+
+  if (!onboardingDone && workspaces.length === 0) {
+    return <OnboardingWizard onComplete={handleOnboardingComplete} />;
+  }
 
   return (
     <div className={`workspace-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${rightPanelOpen ? 'has-right-panel' : ''} ${activeMode === 'agent' ? 'agent-mode-active' : ''}`}>
