@@ -1,6 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════
-   SIDEBAR — Extracted Styles
+   SIDEBAR — Extracted Styles with Glass Morphism
    ═══════════════════════════════════════════════════════════════ */
+
+/* Sidebar glass background */
+.workspace-sidebar {
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(var(--glass-blur-sm));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  border-right: 1px solid var(--glass-border);
+}
 
 /* File tree row */
 .file-row {
@@ -14,7 +22,7 @@
 }
 
 .file-row:hover {
-  background: var(--bg-hover);
+  background: var(--glass-bg-light);
 }
 
 .file-row:focus-visible {

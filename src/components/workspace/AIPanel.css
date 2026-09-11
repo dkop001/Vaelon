@@ -57,7 +57,9 @@
 /* Chat message bubble */
 .chat-msg-bubble {
   max-width: 82%;
-  background: var(--bg-elevated);
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(var(--glass-blur-sm));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
   border-radius: 12px;
   padding: 8px 12px;
   font-size: var(--text-sm);
@@ -68,12 +70,13 @@
 }
 
 .chat-msg-bubble.ai {
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--glass-border-accent);
   border-radius: 4px 12px 12px 12px;
+  background: var(--glass-bg-accent);
 }
 
 .chat-msg-bubble.user {
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--glass-border);
   border-radius: 12px 4px 12px 12px;
 }
 
@@ -97,10 +100,18 @@
   gap: 8px;
   align-items: center;
   padding: 8px 12px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(var(--glass-blur-sm));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   margin-top: 8px;
+  transition: all var(--t-fast);
+}
+
+.chat-input-area:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
 }
 
 .chat-input-area input {

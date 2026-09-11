@@ -147,9 +147,18 @@ html, body, #root {
   --card-border: hsla(0,0%,100%,0.12);
 
   --glass-bg: hsla(0,0%,5%,0.72);
+  --glass-bg-subtle: hsla(0,0%,100%,0.03);
+  --glass-bg-light: hsla(0,0%,100%,0.06);
+  --glass-bg-medium: hsla(0,0%,100%,0.10);
+  --glass-bg-strong: hsla(0,0%,100%,0.14);
+  --glass-bg-accent: hsla(211,100%,60%,0.10);
   --glass-border: hsla(0,0%,100%,0.10);
+  --glass-border-accent: hsla(211,100%,60%,0.25);
   --glass-highlight: inset 0 1px 0 hsla(0,0%,100%,0.06);
   --glass-shadow: none;
+  --glass-shadow-sm: 0 2px 8px rgba(0,0,0,0.20);
+  --glass-shadow-md: 0 4px 16px rgba(0,0,0,0.28);
+  --glass-shadow-lg: 0 8px 32px rgba(0,0,0,0.36);
 }
 
 [data-theme='light'] {
@@ -547,15 +556,17 @@ img,video{max-width:100%;height:auto}
 .cmd-overlay{
   position:fixed;inset:0;
   background:hsla(220,16%,4%,.72);
-  backdrop-filter:blur(10px) saturate(1.2);-webkit-backdrop-filter:blur(10px) saturate(1.2);
+  backdrop-filter:blur(var(--glass-blur-md)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur-md)) saturate(var(--glass-saturate));
   z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;
 }
 .cmd-modal{
   width:100%;max-width:640px;
-  background:var(--surface-modal);
-  border:1px solid var(--border-strong);
+  background:var(--glass-bg-medium);
+  backdrop-filter:blur(var(--glass-blur-lg)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter:blur(var(--glass-blur-lg)) saturate(var(--glass-saturate));
+  border:1px solid var(--glass-border);
   border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-xl);
+  box-shadow:var(--glass-shadow-lg);
   overflow:hidden;display:flex;flex-direction:column;
   animation:scale-in .18s cubic-bezier(0.16,1,0.3,1);
 }
@@ -1506,6 +1517,23 @@ h1,h2,h3,h4,h5,h6{font-family:var(--font-heading);letter-spacing:-0.02em}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .divider{height:1px;background:var(--border-subtle)}
 .divider-vertical{width:1px;background:var(--border-subtle);align-self:stretch}
+
+/* Glass morphism utility classes */
+.glass{background:var(--glass-bg-medium);backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-saturate));border:1px solid var(--glass-border);box-shadow:var(--glass-shadow)}
+.glass-subtle{background:var(--glass-bg-subtle);backdrop-filter:blur(var(--glass-blur-sm));-webkit-backdrop-filter:blur(var(--glass-blur-sm));border:1px solid var(--glass-border)}
+.glass-light{background:var(--glass-bg-light);backdrop-filter:blur(var(--glass-blur-md));-webkit-backdrop-filter:blur(var(--glass-blur-md));border:1px solid var(--glass-border)}
+.glass-strong{background:var(--glass-bg-strong);backdrop-filter:blur(var(--glass-blur-lg));-webkit-backdrop-filter:blur(var(--glass-blur-lg));border:1px solid var(--glass-border);box-shadow:var(--glass-shadow-md)}
+.glass-accent{background:var(--glass-bg-accent);backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));border:1px solid var(--glass-border-accent)}
+.glass-hover{transition:all var(--t-fast)}
+.glass-hover:hover{background:var(--glass-bg-strong);box-shadow:var(--glass-shadow-sm)}
+
+/* Onboarding & splash animations */
+@keyframes glass-shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes glass-focus{0%{box-shadow:0 0 0 0 var(--accent-muted)}100%{box-shadow:0 0 0 4px var(--accent-muted)}}
+@keyframes welcome-fade{0%{opacity:0;transform:scale(0.95)}100%{opacity:1;transform:scale(1)}}
+@keyframes step-slide{0%{opacity:0;transform:translateX(24px)}100%{opacity:1;transform:translateX(0)}}
+@keyframes step-slide-out{0%{opacity:1;transform:translateX(0)}100%{opacity:0;transform:translateX(-24px)}}
+@keyframes task-enter{0%{opacity:0;transform:translateY(8px) scale(0.98)}100%{opacity:1;transform:translateY(0) scale(1)}}
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    RESPONSIVE

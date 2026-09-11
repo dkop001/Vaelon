@@ -406,14 +406,85 @@ export default function AgentMode() {
 
               {/* Completed stats */}
               {status === 'completed' && (
-                <div className="agent-completed-card">
-                  <div className="agent-completed-title">✓ Goal Completed</div>
+                <div className="agent-completed-card glass" style={{
+                  background: 'var(--glass-bg-light)',
+                  backdropFilter: 'blur(var(--glass-blur-sm))',
+                  WebkitBackdropFilter: 'blur(var(--glass-blur-sm))',
+                  border: '1px solid var(--glass-border-accent)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: 'var(--sp-5)',
+                }}>
+                  <div className="agent-completed-title" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 'var(--weight-semibold)',
+                    color: 'var(--success)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '.06em',
+                  }}>
+                    <span style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: '50%',
+                      background: 'var(--success-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 12,
+                    }}>✓</span>
+                    Goal Completed
+                  </div>
                   <StatsBar
                     created={filesCreatedCount}
                     modified={filesModifiedCount}
                     actions={tasksTotal}
                     errors={errorCount}
                   />
+                  {filesCreatedCount + filesModifiedCount > 0 && (
+                    <div style={{
+                      marginTop: 12,
+                      paddingTop: 12,
+                      borderTop: '1px solid var(--border-subtle)',
+                    }}>
+                      <div style={{
+                        fontSize: 'var(--text-xs)',
+                        fontWeight: 'var(--weight-medium)',
+                        color: 'var(--tx-tertiary)',
+                        marginBottom: 8,
+                      }}>
+                        Files Changed
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4,
+                      }}>
+                        {tasks.filter(t => t.command && (t.command.includes('write') || t.command.includes('edit') || t.command.includes('create'))).slice(0, 5).map((task, i) => (
+                          <div key={i} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '6px 8px',
+                            background: 'var(--glass-bg-subtle)',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: 'var(--text-xs)',
+                            fontFamily: 'var(--font-mono)',
+                          }}>
+                            <span style={{
+                              color: task.status === 'completed' ? 'var(--success)' : 'var(--tx-disabled)',
+                            }}>
+                              {task.status === 'completed' ? '✓' : '○'}
+                            </span>
+                            <span style={{ color: 'var(--tx-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {task.description || task.command || 'File operation'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

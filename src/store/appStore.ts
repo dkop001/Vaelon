@@ -44,6 +44,8 @@ interface AppState {
   memoryAddSignal: number;
   triggerMemoryAdd: () => void;
   consumeMemoryAdd: () => number;
+  onboardingComplete: boolean;
+  setOnboardingComplete: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -96,5 +98,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const v = get().memoryAddSignal;
     set({ memoryAddSignal: 0 });
     return v;
+  },
+  onboardingComplete: typeof window !== 'undefined' ? localStorage.getItem('vaelon-onboarding-complete') === 'true' : false,
+  setOnboardingComplete: () => {
+    localStorage.setItem('vaelon-onboarding-complete', 'true');
+    set({ onboardingComplete: true });
   },
 }));

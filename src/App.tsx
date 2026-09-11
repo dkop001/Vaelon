@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import TopBar from './components/workspace/TopBar';
 import Sidebar from './components/workspace/Sidebar';
 import AIPanel from './components/workspace/AIPanel';
 import StatusBar from './components/workspace/StatusBar';
 import CommandPalette from './components/workspace/CommandPalette';
 import SettingsPanel from './components/workspace/SettingsPanel';
+import SplashScreen from './components/ui/SplashScreen';
+import OnboardingWizard from './components/ui/OnboardingWizard';
 import AgentMode from './features/agent/AgentMode';
 import MissionControl from './features/mission-control/MissionControl';
 import ProjectsView from './features/projects/ProjectsView';
@@ -22,17 +24,37 @@ import { useTerminalStore } from './store/terminalStore';
 import { useAgentStore } from './store/agentStore';
 
 function AppContent() {
-  const { activeView, setActiveView, rightPanelOpen, sidebarCollapsed, activeMode } = useAppStore();
-  const { activeWorkspaceId, activeProjectId, init: initWorkspaces } = useWorkspaceStore();
+  const { activeView, setActiveView, rightPanelOpen, sidebarCollapsed, activeMode, onboardingComplete } = useAppStore();
+  const { activeWorkspaceId, activeProjectId, init: initWorkspaces, workspaces } = useWorkspaceStore();
   const { documents, activeDocumentId, createDocument } = useDocumentStore();
   const [showSettings, setShowSettings] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(onboardingComplete);
 
   // ── Init Workspace State on Mount ──────────────────────────────────────────
   useEffect(() => {
-    initWorkspaces().catch((err: any) => {
-      console.error('Failed to init workspaces:', err);
-    });
+    initWorkspaces()
+      .then(() => setTimeout(() => setSplashDone(true), 600))
+      .catch(() => setSplashDone(true));
   }, []);
+
+  const handleSplashComplete = useCallback(() => {
+    setSplashDone(true);
+  }, []);
+
+  const handleOnboardingComplete = useCallback(() => {
+    setOnboardingDone(true);
+  }, []);
+
+  // ── Show splash while loading ──────────────────────────────────────────────
+  if (!splashDone) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
+
+  // ── Show onboarding if not completed and no workspaces ─────────────────────
+  if (!onboardingDone && workspaces.length === 0) {
+    return <OnboardingWizard onComplete={handleOnboardingComplete} />;
+  }
 
   // ── Load Documents when Workspace or Project changes ───────────────────────
   useEffect(() => {

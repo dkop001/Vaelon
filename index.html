@@ -8,7 +8,32 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="splash" style="
+        position:fixed;inset:0;z-index:9999;
+        background:#000;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;gap:16px;
+        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;
+        transition:opacity .5s ease;
+      ">
+        <svg width="56" height="56" viewBox="0 0 16 16" fill="none" style="filter:drop-shadow(0 0 12px rgba(41,151,255,0.3))">
+          <path d="M 3.5 4.2 L 8 12 L 12.5 4.2" stroke="#2997FF"
+                stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div style="color:#FFFFFF;font-size:18px;font-weight:600;letter-spacing:-.03em;font-family:inherit">Vaelon</div>
+        <div style="color:#86868B;font-size:12px;letter-spacing:.02em;margin-top:-4px">Developer Operating System</div>
+        <div style="width:140px;height:2px;background:#272729;border-radius:1px;overflow:hidden;margin-top:12px">
+          <div id="splash-bar" style="width:30%;height:100%;background:#2997FF;border-radius:1px;animation:splash-progress 1.8s ease-in-out infinite"></div>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes splash-progress {
+        0%{transform:translateX(-100%)}
+        50%{transform:translateX(200%)}
+        100%{transform:translateX(400%)}
+      }
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
