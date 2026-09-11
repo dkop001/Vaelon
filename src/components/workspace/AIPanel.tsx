@@ -8,6 +8,7 @@ import { useDocumentStore } from '../../store/noteStore';
 import { buildProjectContext } from '../../lib/projectContext';
 import { api, onEvent, ProjectIntelligence } from '../../ipc/client';
 import FilePreviewPanel from '../../features/editor/FilePreviewPanel';
+import './AIPanel.css';
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Ico = {
   close: () => (
@@ -61,15 +62,12 @@ const Ico = {
 // ── Typing dots ────────────────────────────────────────────────────────────────
 function TypingDots() {
   return (
-    <span style={{ display: 'inline-flex', gap: 3, alignItems: 'center', padding: '2px 0' }}>
+    <span className="typing-dots">
       {[0, 1, 2].map(i => (
-        <span key={i} style={{
-          width: 5, height: 5, borderRadius: '50%',
-          background: 'var(--accent)',
+        <span key={i} className="dot" style={{
           animation: `typing 1.2s ease-in-out ${i * 0.2}s infinite`,
         }} />
       ))}
-      <style>{`@keyframes typing{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-4px);opacity:1}}`}</style>
     </span>
   );
 }
@@ -83,26 +81,11 @@ interface MsgItem {
 function ChatMessage({ msg, isLast, isLoading }: { msg: MsgItem; isLast: boolean; isLoading: boolean }) {
   const isAI = msg.role === 'ai';
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexDirection: isAI ? 'row' : 'row-reverse' }}>
-      <div style={{
-        width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-        background: isAI ? 'var(--accent)' : 'var(--bg-overlay)',
-        border: isAI ? 'none' : '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 10, fontWeight: 700, color: isAI ? 'white' : 'var(--tx-secondary)',
-        boxShadow: isAI ? '0 0 10px hsla(211,100%,60%,.25)' : 'none',
-      }}>
+    <div className={`chat-msg ${msg.role}`}>
+      <div className={`chat-msg-avatar ${msg.role}`}>
         {isAI ? '✦' : 'U'}
       </div>
-      <div style={{
-        maxWidth: '82%',
-        background: isAI ? 'var(--bg-elevated)' : 'var(--bg-elevated)',
-        border: `1px solid ${isAI ? 'var(--accent-border)' : 'var(--border-subtle)'}`,
-        borderRadius: isAI ? '4px 12px 12px 12px' : '12px 4px 12px 12px',
-        padding: '8px 12px',
-        fontSize: 'var(--text-sm)', lineHeight: 1.65, color: 'var(--tx-primary)',
-        whiteSpace: 'pre-wrap',
-      }}>
+      <div className={`chat-msg-bubble ${msg.role}`}>
         {msg.text}
         {isLast && isLoading && <TypingDots />}
       </div>

@@ -286,7 +286,6 @@ export default function FilePreviewPanel({ filePath, fileName, onClose, onOpenIn
       </div>
 
       <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .file-preview-code { counter-reset: line; }
         .file-preview-code::before {
           content: counter(line);

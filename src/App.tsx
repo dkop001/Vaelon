@@ -88,51 +88,53 @@ function AppContent() {
       )}
 
       {/* ── Main Panel Content ── */}
-      <div className="workspace-main">
+      <main className="workspace-main" role="main" aria-label="Main content">
         {activeMode === 'agent' ? (
           <AgentMode />
         ) : (
           <>
             {activeView === 'home' && (
-              <MissionControl />
+              <div className="animate-fade-in"><MissionControl /></div>
             )}
 
             {activeView === 'agent' && (
-              <AgentMode />
+              <div className="animate-fade-in"><AgentMode /></div>
             )}
 
             {activeView === 'documents' && (
-              <DocumentWorkspace
-                onStatsChange={() => {}}
-              />
+              <div className="animate-fade-in">
+                <DocumentWorkspace
+                  onStatsChange={() => {}}
+                />
+              </div>
             )}
 
             {activeView === 'search' && (
-              <SearchPage />
+              <div className="animate-fade-in"><SearchPage /></div>
             )}
 
             {activeView === 'projects' && (
-              <ProjectsView />
+              <div className="animate-fade-in"><ProjectsView /></div>
             )}
 
             {activeView === 'memory' && (
-              <MemoryView />
+              <div className="animate-fade-in"><MemoryView /></div>
             )}
 
             {activeView === 'graph' && (
-              <GraphView />
+              <div className="animate-fade-in"><GraphView /></div>
             )}
 
             {activeView === 'timeline' && (
-              <TimelineView />
+              <div className="animate-fade-in"><TimelineView /></div>
             )}
 
-{activeView === 'terminal' && (
-  <TerminalView />
-)}
+            {activeView === 'terminal' && (
+              <div className="animate-fade-in"><TerminalView /></div>
+            )}
           </>
         )}
-      </div>
+      </main>
 
       {/* ── Right AI Panel & Statusbar ── */}
       {activeMode !== 'agent' && (

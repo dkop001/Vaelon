@@ -1,0 +1,83 @@
+/* ═══════════════════════════════════════════════════════════════
+   SIDEBAR — Extracted Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+/* File tree row */
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+  transition: var(--t-fast);
+  border-radius: var(--radius-sm);
+}
+
+.file-row:hover {
+  background: var(--bg-hover);
+}
+
+.file-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* File name text */
+.file-row-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Folder toggle icon */
+.file-row-toggle {
+  font-size: 9px;
+  color: var(--tx-disabled);
+  width: 12px;
+  text-align: center;
+}
+
+.file-row-toggle.open {
+  transform: rotate(90deg);
+}
+
+/* Loading indicator */
+.file-row-loading {
+  font-size: 9px;
+  color: var(--accent);
+  animation: spin 1s linear infinite;
+}
+
+/* File icon opacity */
+.file-row-icon {
+  opacity: 0.6;
+}
+
+.file-row-icon.folder {
+  opacity: 0.7;
+}
+
+/* Open in documents button */
+.file-row-action {
+  opacity: 0.5;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tx-tertiary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.file-row-action:hover {
+  opacity: 1;
+  background: var(--bg-hover);
+}
+
+.file-row-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

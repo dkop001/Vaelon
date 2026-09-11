@@ -15,7 +15,7 @@
   padding:var(--sp-16) var(--sp-16) var(--sp-12);
   border-radius:var(--radius-lg);
   border:1px solid var(--border-subtle);
-  background:#272729;
+  background:var(--surface-tile-1);
   overflow:hidden;
 }
 .mc-brand{
@@ -135,10 +135,7 @@
 }
 .mc-empty svg{color:var(--tx-tertiary);opacity:.6}
 
-@keyframes pulse-live{
-  0%,100%{opacity:1;transform:scale(1)}
-  50%{opacity:.45;transform:scale(.7)}
-}
+
 
 /* ── Fresh-project checklist ── */
 .mc-checklist{

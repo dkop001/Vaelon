@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { useNoteStore } from '../../store/noteStore';
 
@@ -9,12 +10,19 @@ interface StatusBarProps {
 export default function StatusBar({ wordCount = 0, charCount = 0 }: StatusBarProps) {
   const { syncState, theme, activeView, openCmd, openRightPanel } = useAppStore();
   const { activeNoteId } = useNoteStore();
+  const [timeStr, setTimeStr] = useState(() =>
+    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeStr(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const syncLabels = { synced: 'All changes saved', syncing: 'Saving…', offline: 'Offline' };
   const syncColors = { synced: 'var(--success)', syncing: 'var(--warning)', offline: 'var(--danger)' };
-
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <footer className="statusbar workspace-statusbar" role="contentinfo" aria-label="Status bar">

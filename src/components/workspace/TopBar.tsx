@@ -83,13 +83,13 @@ export default function TopBar({ documentTitle, onSettingsOpen }: TopBarProps) {
   const {
     theme, toggleTheme, toggleSidebar, openCmd,
     rightPanelOpen, toggleRightPanel, syncState, activeView,
-    setActiveMode, activeMode, setActiveView,
+    setActiveMode, activeMode, setActiveView, sidebarCollapsed,
   } = useAppStore();
 
   return (
     <header className="topbar workspace-topbar" role="banner">
       {/* Hamburger (desktop collapse) */}
-      <button className="topbar-btn" onClick={toggleSidebar} aria-label="Toggle sidebar">
+      <button className="topbar-btn" onClick={toggleSidebar} aria-label="Toggle sidebar" aria-expanded={!sidebarCollapsed}>
         <IconMenu />
       </button>
 
@@ -108,12 +108,14 @@ export default function TopBar({ documentTitle, onSettingsOpen }: TopBarProps) {
         <button
           className={`mode-switcher-btn ${activeMode === 'knowledge' ? 'active' : ''}`}
           onClick={() => setActiveMode('knowledge')}
+          aria-pressed={activeMode === 'knowledge'}
         >
           Knowledge
         </button>
         <button
           className={`mode-switcher-btn ${activeMode === 'agent' ? 'active' : ''}`}
           onClick={() => setActiveMode('agent')}
+          aria-pressed={activeMode === 'agent'}
         >
           Agent
         </button>
@@ -147,6 +149,7 @@ export default function TopBar({ documentTitle, onSettingsOpen }: TopBarProps) {
           className={`topbar-btn ${rightPanelOpen ? 'active glowing' : ''}`}
           onClick={toggleRightPanel}
           aria-label="Toggle AI panel"
+          aria-expanded={rightPanelOpen}
           id="topbar-ai-toggle"
           title="AI Panel"
           style={rightPanelOpen ? {

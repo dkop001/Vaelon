@@ -6,6 +6,7 @@ import { api } from '../../ipc/client';
 import ChatHistoryPanel from './ChatHistoryPanel';
 import VaelonLogo from '../VaelonLogo';
 import InlineBanner, { useInlineBanner } from '../../components/ui/InlineBanner';
+import './Sidebar.css';
 
 // ── Inline SVGs ───────────────────────────────────────────────────────────
 const IconHome = () => (
@@ -175,20 +176,21 @@ function FileRow({ node, depth, onOpenFile, onOpenInDocuments, onLoadChildren }:
   if (node.is_dir) {
     return (
       <>
-        <div
-          className="sidebar-item"
+        <button
+          className="file-row"
           style={{ paddingLeft: `calc(var(--sp-3) + ${depth * 14}px)` }}
           onClick={handleToggleDir}
-          role="button"
+          aria-expanded={open}
+          aria-label={`Folder: ${node.name}`}
         >
-          <span className="sidebar-item-icon" style={{ opacity: 0.7 }}><IconFolder /></span>
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+          <span className="file-row-icon folder"><IconFolder /></span>
+          <span className="file-row-name">{node.name}</span>
           {loadingChildren ? (
-            <span style={{ fontSize: 9, color: 'var(--accent)' }}>⟳</span>
+            <span className="file-row-loading">⟳</span>
           ) : (
-            <span style={{ fontSize: 9, color: 'var(--tx-disabled)' }}>{open ? '▾' : '▸'}</span>
+            <span className={`file-row-toggle ${open ? 'open' : ''}`}>▸</span>
           )}
-        </div>
+        </button>
         {open && node.children?.map((child) => (
           <FileRow 
             key={child.path} 
@@ -203,25 +205,24 @@ function FileRow({ node, depth, onOpenFile, onOpenInDocuments, onLoadChildren }:
     );
   }
   return (
-    <div
-      className="sidebar-item"
+    <button
+      className="file-row"
       style={{ paddingLeft: `calc(var(--sp-3) + ${depth * 14}px)` }}
       onClick={() => onOpenFile(node.path, node.name)}
-      role="button"
+      aria-label={`File: ${node.name}`}
     >
-      <span className="sidebar-item-icon" style={{ opacity: 0.6 }}><IconFile /></span>
-      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+      <span className="file-row-icon"><IconFile /></span>
+      <span className="file-row-name">{node.name}</span>
       <GitBadge status={node.gitStatus} />
       <button
-        className="sidebar-item-action"
+        className="file-row-action"
         onClick={(e) => { e.stopPropagation(); onOpenInDocuments(node.path, node.name); }}
         title="Open in Documents"
-        style={{ opacity: 0.5, padding: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tx-tertiary)' }}
         aria-label="Open in Documents"
       >
         <IconOpenDoc />
       </button>
-    </div>
+    </button>
   );
 }
 
